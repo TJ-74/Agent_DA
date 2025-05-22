@@ -11,7 +11,12 @@ interface ChatContext {
   selectedFile?: FileMetadata | null;
 }
 
-export async function generateResponse(context: ChatContext): Promise<string> {
+export interface ChatResponse {
+  response: string;
+  plotData?: any;
+}
+
+export async function generateResponse(context: ChatContext): Promise<ChatResponse> {
   try {
     const response = await fetch('/api/chat', {
       method: 'POST',
@@ -29,7 +34,10 @@ export async function generateResponse(context: ChatContext): Promise<string> {
     }
 
     const data = await response.json();
-    return data.response;
+    return {
+      response: data.response,
+      plotData: data.plotData
+    };
   } catch (error) {
     console.error('Error generating response:', error);
     throw error;

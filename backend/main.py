@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import io
 from typing import List, Optional, Dict
-from utils.data_analysis import generate_summary_stats
+from utils.data_analysis import generate_summary_stats, DataAnalysisTool, DataCleaningTool
 from utils.r2_storage import R2Storage
 from utils.data_loader import DataLoader
 import numpy as np
@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 r2_storage = R2Storage()
 data_loader = DataLoader()
+
+# Initialize LangChain tools
+data_analysis_tool = DataAnalysisTool(data_loader=data_loader)
+data_cleaning_tool = DataCleaningTool(data_loader=data_loader)
 
 # CORS configuration
 app.add_middleware(
@@ -97,110 +101,30 @@ async def analyze_for_chat(
             raise HTTPException(status_code=404, detail=f"File not found: {file_key}")
             
         try:
-            # Use DataLoader to load and preprocess the data
-            logger.info("Loading and preprocessing data")
+            # Use DataLoader to load the data
+            logger.info("Loading data")
             df = data_loader.load_data(file_obj, source_type='csv')
             
-            # Handle missing values and normalize formats
-            logger.info("Handling missing values and normalizing formats")
-            df = data_loader.handle_missing_values(strategy='auto')
-            df = data_loader.normalize_formats()
+            # Clean the data using LangChain tool
+            logger.info("Cleaning data")
+            df = data_cleaning_tool._run(df, strategy='auto')
             
             # Store the cleaned dataset
-            cleaned_file_key = f"cleaned_{file_key}"
             cleaned_buffer = io.BytesIO()
             df.to_csv(cleaned_buffer, index=False)
             cleaned_buffer.seek(0)
-            r2_storage.upload_file(cleaned_buffer, cleaned_file_key)
+            cleaned_file_key = r2_storage.upload_cleaned_version(cleaned_buffer, file_key)
             logger.info(f"Stored cleaned dataset with key: {cleaned_file_key}")
             
             # Get the query from the request
             query = request.get("query", "").lower()
             logger.info(f"Processing query: {query}")
             
-            # Perform the requested analysis based on the query
-            result = {}
-            
+            # Perform analysis using LangChain tool
             try:
-                # Get basic data info using DataLoader
-                logger.info("Getting basic data info")
-                data_info = data_loader.get_data_info()
-                
-                # Convert dtypes to strings for JSON serialization
-                dtypes_dict = {col: str(dtype) for col, dtype in data_info['dtypes'].items()}
-                
-                result["file_info"] = {
-                    "total_rows": int(data_info['shape'][0]),
-                    "total_columns": int(data_info['shape'][1]),
-                    "column_names": list(data_info['dtypes'].keys()),
-                    "column_types": dtypes_dict,
-                    "missing_values": {k: int(v) for k, v in data_info['missing_values'].items()},
-                    "cleaned_file_key": cleaned_file_key  # Add the cleaned file key to the response
-                }
-                
-                if "summary" in query:
-                    logger.info("Generating summary statistics")
-                    numeric_stats = {}
-                    for col, stats in data_info['numeric_stats'].items():
-                        numeric_stats[col] = {
-                            k: float(v) if isinstance(v, (np.float32, np.float64)) else v
-                            for k, v in stats.items()
-                        }
-                    result["summary"] = {
-                        "shape": [int(x) for x in data_info['shape']],
-                        "dtypes": dtypes_dict,
-                        "missing_values": {k: int(v) for k, v in data_info['missing_values'].items()},
-                        "numeric_stats": numeric_stats
-                    }
-                
-                if "correlation" in query or "relationship" in query:
-                    logger.info("Calculating correlations")
-                    numeric_cols = data_info['numeric_columns']
-                    if len(numeric_cols) > 1:
-                        correlations = df[numeric_cols].corr()
-                        result["correlations"] = {
-                            col: {other_col: float(corr) for other_col, corr in row.items()}
-                            for col, row in correlations.to_dict().items()
-                        }
-                
-                if "distribution" in query:
-                    logger.info("Calculating distributions")
-                    distributions = {}
-                    for col, stats in data_info['numeric_stats'].items():
-                        distributions[col] = {
-                            k: float(v) if isinstance(v, (np.float32, np.float64)) else v
-                            for k, v in stats.items()
-                        }
-                    result["distributions"] = distributions
-                
-                if "unique" in query or "categories" in query:
-                    logger.info("Analyzing categories")
-                    categories = {}
-                    for col in data_info['categorical_columns']:
-                        value_counts = df[col].value_counts()
-                        categories[col] = {
-                            "unique_values": {str(k): int(v) for k, v in value_counts.to_dict().items()},
-                            "total_unique": int(len(value_counts))
-                        }
-                    result["categories"] = categories
-                    
-                if "missing" in query:
-                    logger.info("Analyzing missing values")
-                    result["missing_values_analysis"] = {
-                        "missing_counts": {k: int(v) for k, v in data_info['missing_values'].items()},
-                        "missing_percentages": {
-                            col: float((count / data_info['shape'][0]) * 100)
-                            for col, count in data_info['missing_values'].items()
-                        }
-                    }
-                    
-                if "types" in query or "schema" in query:
-                    logger.info("Getting data types")
-                    result["data_types"] = {
-                        "numeric_columns": data_info['numeric_columns'],
-                        "categorical_columns": data_info['categorical_columns'],
-                        "datetime_columns": data_info['datetime_columns']
-                    }
+                logger.info("Performing analysis")
+                result = data_analysis_tool._run(query, df)
+                result["file_info"]["cleaned_file_key"] = cleaned_file_key
                 
                 logger.info("Analysis completed successfully")
                 return result

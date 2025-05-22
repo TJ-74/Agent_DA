@@ -31,6 +31,22 @@ class R2Storage:
         self.s3.upload_fileobj(file, self.bucket_name, key)
         return key
 
+    def upload_cleaned_version(self, file: BinaryIO, original_file_key: str) -> str:
+        """
+        Upload a cleaned version of a file to R2 storage
+        Returns the file key for the cleaned version
+        """
+        # Extract the original file ID and extension
+        original_id = original_file_key.split('.')[0]
+        extension = original_file_key.split('.')[-1]
+        
+        # Create a new key with 'cleaned_' prefix
+        cleaned_key = f"cleaned_{original_id}.{extension}"
+        
+        # Upload the cleaned file
+        self.s3.upload_fileobj(file, self.bucket_name, cleaned_key)
+        return cleaned_key
+
     def download_file(self, file_key: str) -> Optional[BinaryIO]:
         """
         Download a file from R2 storage

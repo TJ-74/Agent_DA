@@ -21,6 +21,48 @@ interface FormattedMessage {
   content: string;
 }
 
+function formatAnalysisResponse(analysis: any) {
+  if (!analysis) return null;
+
+  // Extract plot data if it exists
+  const plotData = analysis.plot;
+  
+  // Remove the plot from the analysis to avoid double embedding
+  const analysisWithoutPlot = { ...analysis };
+  delete analysisWithoutPlot.plot;
+
+  return {
+    analysis: analysisWithoutPlot,
+    plotData: plotData
+  };
+}
+
+function cleanResponse(response: string): string {
+  // Remove suggestions about using visualization tools
+  const patterns = [
+    /you can use.*?to create.*?plot/gi,
+    /to visualize.*?plot.*?use/gi,
+    /I('m| am) not capable of (directly )?(rendering|displaying|showing|creating).*?(plots?|graphs?|charts?|visualizations?)/gi,
+    /to see the actual plot/gi,
+    /using a data visualization tool/gi,
+    /if you would like to visualize/gi,
+    /recommend using/gi,
+    /matplotlib|seaborn|plotly|visualization tool|library/gi
+  ];
+
+  let cleanedResponse = response;
+  patterns.forEach(pattern => {
+    cleanedResponse = cleanedResponse.replace(pattern, '');
+  });
+
+  // Clean up any double spaces or empty lines created by the replacements
+  cleanedResponse = cleanedResponse.replace(/\n\s*\n\s*\n/g, '\n\n')
+    .replace(/  +/g, ' ')
+    .trim();
+
+  return cleanedResponse;
+}
+
 export async function POST(request: Request) {
   try {
     const { messages, selectedFile }: ChatRequest = await request.json();
@@ -35,6 +77,7 @@ export async function POST(request: Request) {
     // If a file is selected, get its analysis from the backend
     let fileAnalysis = null;
     let analysisError = null;
+    let plotData = null;
     
     if (selectedFile?.r2Key) {
       try {
@@ -56,7 +99,12 @@ export async function POST(request: Request) {
           );
         }
 
-        fileAnalysis = await analysisResponse.json();
+        const rawAnalysis = await analysisResponse.json();
+        const formattedResponse = formatAnalysisResponse(rawAnalysis);
+        if (formattedResponse) {
+          fileAnalysis = formattedResponse.analysis;
+          plotData = formattedResponse.plotData;
+        }
       } catch (error) {
         console.error('Error analyzing file:', error);
         analysisError = error instanceof Error ? error.message : 'Failed to analyze file';
@@ -67,29 +115,38 @@ export async function POST(request: Request) {
     const systemMessage: FormattedMessage = {
       role: 'system' as const,
       content: `You are a Data Analysis Agent helping analyze ${selectedFile ? `the file "${selectedFile.filename}"` : 'data files'}. 
-      
-IMPORTANT FORMATTING INSTRUCTIONS:
-1. Always present data and statistics in well-formatted Markdown tables.
-2. Use tables for:
-   - Numerical summaries (mean, median, etc.)
-   - Categorical data distributions
-   - Correlation matrices
-   - Comparison of variables
-   - Any data with 2+ columns that would be clearer in tabular format
-3. Use proper Markdown table syntax with headers and aligned columns.
-4. Include column headers that clearly describe the data.
-5. For longer tables, consider grouping or summarizing to show the most relevant information.
-6. Format percentages, decimal numbers, and other values consistently.
+
+CRITICAL INSTRUCTIONS - READ CAREFULLY:
+1. For data visualization:
+   - NEVER mention that you can't display plots or images
+   - NEVER suggest using any visualization tools or libraries
+   - NEVER provide code for creating plots
+   - NEVER create ASCII art representations of plots
+   - DO describe what the data shows in natural language
+   - The visualization will be handled automatically by the system
+
+2. When plots are present:
+   - Simply describe the insights from the data
+   - Focus on patterns, trends, and notable observations
+   - Use precise numbers and statistics
+   - Let the interactive visualization speak for itself
+
+3. For data presentation:
+   - Use Markdown tables for numerical summaries
+   - Format numbers consistently (2 decimal places)
+   - Use thousands separators for large numbers
+   - Show percentages with 1 decimal place
 
 ${
   fileAnalysis ? `
 Here is the analysis of the file based on the user's query:
 ${JSON.stringify(fileAnalysis, null, 2)}
+${plotData ? '\nNote: An interactive visualization will be displayed automatically with your response.' : ''}
 
-Please provide insights and answer the user's question based on this analysis. Remember to format appropriate data in tables even if the user didn't explicitly request tables.
+Focus on describing the insights from the data. The visualization system will handle the plot display.
 ` : analysisError ? `
 Note: There was an error analyzing the file: ${analysisError}
-Please proceed with the analysis based on the information available, but inform the user about the analysis error.
+Please inform the user about the analysis error and provide guidance on how to proceed.
 ` : ''
 }`
     };
@@ -105,8 +162,21 @@ Please proceed with the analysis based on the information available, but inform 
       stream: false,
     });
 
+    let response = completion.choices[0]?.message?.content || 'I apologize, but I was unable to generate a response.';
+    
+    // Clean the response if we have plot data
+    if (plotData) {
+      response = cleanResponse(response);
+    }
+
+    // Return both the cleaned response and plot data
     return NextResponse.json({
-      response: completion.choices[0]?.message?.content || 'I apologize, but I was unable to generate a response.'
+      response,
+      plotData: plotData ? {
+        type: "plot",
+        data: plotData.data,
+        plotType: plotData.plot_type
+      } : null
     });
   } catch (error) {
     console.error('Error in chat route:', error);
