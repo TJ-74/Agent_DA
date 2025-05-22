@@ -1,34 +1,37 @@
+import { FileMetadata } from './firestore';
+
 export interface ChatMessage {
   text: string;
   isUser: boolean;
-  timestamp: Date;
+  timestamp?: Date;
 }
 
-export async function generateResponse(messages: ChatMessage[]): Promise<string> {
-  try {
-    // Format messages for the chat completion
-    const formattedMessages = messages.map(msg => ({
-      role: msg.isUser ? 'user' as const : 'assistant' as const,
-      content: msg.text
-    }));
+interface ChatContext {
+  messages: ChatMessage[];
+  selectedFile?: FileMetadata | null;
+}
 
+export async function generateResponse(context: ChatContext): Promise<string> {
+  try {
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ messages: formattedMessages }),
+      body: JSON.stringify({
+        messages: context.messages,
+        selectedFile: context.selectedFile,
+      }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to generate response');
+      throw new Error('Failed to generate response');
     }
 
     const data = await response.json();
     return data.response;
   } catch (error) {
     console.error('Error generating response:', error);
-    return 'I apologize, but there was an error processing your request.';
+    throw error;
   }
 } 

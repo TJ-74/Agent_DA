@@ -1,132 +1,151 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTheme } from '@/context/ThemeContext';
-import { AnalysisResult, getFileDownloadUrl, analyzeStoredFile, deleteStoredFile } from '@/services/api';
+import { useFile } from '@/context/FileContext';
+import { FileMetadata } from '@/services/firestore';
+import { deleteFile } from '@/services/files';
+import { formatFileSize, formatDate } from '@/utils/format';
 
 interface FileManagerProps {
-  currentFile: AnalysisResult | null;
-  onDeleteFile: (fileKey: string) => void;
+  savedFiles: FileMetadata[];
+  onFileDelete: (fileId: string) => void;
+  onFileSelect: (file: FileMetadata) => void;
 }
 
-const FileManager: React.FC<FileManagerProps> = ({ currentFile, onDeleteFile }) => {
+const FileManager: React.FC<FileManagerProps> = ({
+  savedFiles,
+  onFileDelete,
+  onFileSelect,
+}) => {
   const { colors } = useTheme();
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const { selectedFile, setSelectedFile } = useFile();
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (currentFile?.file_key) {
-      fetchDownloadUrl(currentFile.file_key);
-    }
-  }, [currentFile]);
-
-  const fetchDownloadUrl = async (fileKey: string) => {
+  const handleDelete = async (file: FileMetadata) => {
     try {
-      const url = await getFileDownloadUrl(fileKey);
-      setDownloadUrl(url);
+      setError(null);
+      setIsDeleting(file.id!);
+      await deleteFile(file);
+      if (selectedFile?.id === file.id) {
+        setSelectedFile(null);
+      }
+      onFileDelete(file.id!);
     } catch (error) {
-      console.error('Failed to get download URL:', error);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!currentFile?.file_key) return;
-    
-    setIsLoading(true);
-    try {
-      await deleteStoredFile(currentFile.file_key);
-      onDeleteFile(currentFile.file_key);
-    } catch (error) {
-      console.error('Failed to delete file:', error);
+      console.error('Error deleting file:', error);
+      setError(error instanceof Error ? error.message : 'Failed to delete file');
+      // Auto-hide error after 5 seconds
+      setTimeout(() => setError(null), 5000);
     } finally {
-      setIsLoading(false);
+      setIsDeleting(null);
     }
   };
 
-  const handleReanalyze = async () => {
-    if (!currentFile?.file_key) return;
-    
-    setIsLoading(true);
-    try {
-      const result = await analyzeStoredFile(currentFile.file_key);
-      // Handle the new analysis result
-      console.log('New analysis:', result);
-    } catch (error) {
-      console.error('Failed to reanalyze file:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSelect = (file: FileMetadata) => {
+    setSelectedFile(file);
+    onFileSelect(file);
   };
 
-  if (!currentFile) return null;
+  if (savedFiles.length === 0) {
+    return null;
+  }
 
   return (
     <div 
-      className="mt-6 p-6 rounded-xl"
+      className="rounded-2xl shadow-2xl p-6 backdrop-blur-xl"
       style={{ background: colors.background.card, border: `1px solid ${colors.border.light}` }}
     >
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-semibold" style={{ color: colors.text.primary }}>
-          Current File
-        </h3>
-        <div className="flex space-x-2">
-          {downloadUrl && (
-            <a
-              href={downloadUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 rounded-lg transition-all duration-200"
-              style={{
-                background: `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})`,
-                color: colors.text.primary,
-              }}
-            >
-              Download
-            </a>
-          )}
-          <button
-            onClick={handleReanalyze}
-            disabled={isLoading}
-            className="px-4 py-2 rounded-lg transition-all duration-200"
-            style={{
-              background: colors.background.input,
-              color: colors.text.primary,
-              border: `1px solid ${colors.border.light}`,
-            }}
-          >
-            Reanalyze
-          </button>
-          <button
-            onClick={handleDelete}
-            disabled={isLoading}
-            className="px-4 py-2 rounded-lg transition-all duration-200"
-            style={{
-              background: '#dc2626',
-              color: colors.text.primary,
-            }}
-          >
-            Delete
-          </button>
+      <h2 className="text-xl font-semibold mb-4" style={{ color: colors.text.primary }}>
+        Your Files
+      </h2>
+      
+      {/* Error Message */}
+      {error && (
+        <div 
+          className="mb-4 p-3 rounded-lg"
+          style={{ 
+            background: 'rgba(255, 0, 0, 0.1)', 
+            border: '1px solid rgba(255, 0, 0, 0.2)',
+            color: colors.text.primary 
+          }}
+        >
+          {error}
         </div>
-      </div>
+      )}
 
       <div className="space-y-4">
-        <div className="flex justify-between items-center py-2 border-b" style={{ borderColor: colors.border.light }}>
-          <span style={{ color: colors.text.secondary }}>Filename:</span>
-          <span style={{ color: colors.text.primary }}>{currentFile.filename}</span>
-        </div>
-        <div className="flex justify-between items-center py-2 border-b" style={{ borderColor: colors.border.light }}>
-          <span style={{ color: colors.text.secondary }}>File ID:</span>
-          <span style={{ color: colors.text.primary }}>{currentFile.file_key}</span>
-        </div>
-        <div className="flex justify-between items-center py-2 border-b" style={{ borderColor: colors.border.light }}>
-          <span style={{ color: colors.text.secondary }}>Total Rows:</span>
-          <span style={{ color: colors.text.primary }}>{currentFile.total_rows}</span>
-        </div>
-        <div className="flex justify-between items-center py-2" style={{ borderColor: colors.border.light }}>
-          <span style={{ color: colors.text.secondary }}>Total Columns:</span>
-          <span style={{ color: colors.text.primary }}>{currentFile.total_columns}</span>
-        </div>
+        {savedFiles.map((file) => {
+          const isSelected = selectedFile?.id === file.id;
+          const isFileDeleting = isDeleting === file.id;
+          return (
+            <div
+              key={file.id}
+              className={`p-4 rounded-xl transition-all duration-200 ${
+                isSelected ? 'ring-2 transform scale-[1.02]' : 'hover:scale-[1.01]'
+              }`}
+              style={{ 
+                background: colors.background.input,
+                borderColor: isSelected ? colors.primary.from : 'transparent',
+                opacity: isFileDeleting ? 0.5 : 1,
+              }}
+            >
+              <div className="flex flex-col gap-3">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 
+                      className="font-medium mb-1 cursor-pointer hover:underline"
+                      style={{ color: colors.text.primary }}
+                      onClick={() => handleSelect(file)}
+                    >
+                      {file.filename}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div style={{ color: colors.text.secondary }}>
+                        Size: {formatFileSize(file.size)}
+                      </div>
+                      <div style={{ color: colors.text.secondary }}>
+                        Uploaded: {formatDate(file.uploadedAt)}
+                      </div>
+                      <div style={{ color: colors.text.secondary }}>
+                        Rows: {file.totalRows}
+                      </div>
+                      <div style={{ color: colors.text.secondary }}>
+                        Columns: {file.totalColumns}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDelete(file)}
+                    className="p-2 rounded-lg transition-all duration-200 hover:scale-110"
+                    style={{ color: colors.text.secondary }}
+                    aria-label="Delete file"
+                    disabled={isFileDeleting}
+                  >
+                    {isFileDeleting ? '⏳' : '🗑️'}
+                  </button>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => handleSelect(file)}
+                    className={`px-4 py-2 rounded-lg transition-all duration-200 text-sm ${
+                      isSelected ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
+                    }`}
+                    style={{
+                      background: isSelected 
+                        ? colors.background.card
+                        : `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})`,
+                      color: colors.text.primary,
+                    }}
+                    disabled={isSelected || isFileDeleting}
+                  >
+                    {isSelected ? 'Currently Selected' : 'Use in Chat'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

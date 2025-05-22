@@ -53,6 +53,17 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
     }).format(date);
   };
 
+  const handleTypingComplete = () => {
+    setIsTypingComplete(true);
+    // Trigger scroll after typing is complete
+    setTimeout(() => {
+      const chatContainer = document.querySelector('.chat-container');
+      if (chatContainer) {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+    }, 100);
+  };
+
   const components = {
     code(props: any) {
       const { inline, className, children } = props;
@@ -63,18 +74,22 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
 
       return !inline && language ? (
         <div className="relative group">
-          <SyntaxHighlighter
-            style={theme === 'dark' ? vscDarkPlus : vs}
-            language={language}
-            PreTag="div"
-            customStyle={{
-              margin: '1em 0',
-              borderRadius: '0.5rem',
-              padding: '1em',
-            }}
-          >
-            {code}
-          </SyntaxHighlighter>
+          <div className="overflow-x-auto">
+            <SyntaxHighlighter
+              style={theme === 'dark' ? vscDarkPlus : vs}
+              language={language}
+              PreTag="div"
+              customStyle={{
+                margin: '1em 0',
+                borderRadius: '0.5rem',
+                padding: '1em',
+                minWidth: '100%',
+                overflowX: 'auto',
+              }}
+            >
+              {code}
+            </SyntaxHighlighter>
+          </div>
           <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={() => handleCopy(code, blockId)}
@@ -116,9 +131,36 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
     },
     table(props: any) {
       return (
-        <div className="overflow-x-auto my-4">
-          <table className="min-w-full divide-y">{props.children}</table>
+        <div className="overflow-x-auto my-4 rounded-lg border" style={{ borderColor: colors.border.light }}>
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50" style={{ backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
+              {props.children[0]}
+            </thead>
+            <tbody className="divide-y divide-gray-200" style={{ borderColor: colors.border.light }}>
+              {props.children.slice(1)}
+            </tbody>
+          </table>
         </div>
+      );
+    },
+    th(props: any) {
+      return (
+        <th
+          className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"
+          style={{ color: colors.text.secondary }}
+        >
+          {props.children}
+        </th>
+      );
+    },
+    td(props: any) {
+      return (
+        <td
+          className="px-6 py-4 whitespace-nowrap text-sm"
+          style={{ color: colors.text.primary }}
+        >
+          {props.children}
+        </td>
       );
     },
     a(props: any) {
@@ -182,7 +224,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
             <TypewriterText
               text={message}
               speed={typingSpeed}
-              onComplete={() => setIsTypingComplete(true)}
+              onComplete={handleTypingComplete}
               components={components}
             />
           )}

@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 interface NumericColumnStats {
   mean: number;
@@ -27,7 +27,7 @@ interface CategoricalColumnStats {
 
 export interface AnalysisResult {
   filename: string;
-  file_key: string;
+  file_key?: string;
   total_rows: number;
   total_columns: number;
   numeric_columns?: Record<string, NumericColumnStats>;
@@ -47,7 +47,7 @@ export const uploadCSV = async (file: File): Promise<AnalysisResult> => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`${API_BASE_URL}/upload`, {
+  const response = await fetch(`${API_BASE_URL}/api/upload`, {
     method: 'POST',
     body: formData,
   });

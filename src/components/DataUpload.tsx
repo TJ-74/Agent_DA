@@ -1,8 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 import { uploadCSV, AnalysisResult } from '@/services/api';
+import { saveFileMetadata, getUserFiles, FileMetadata, deleteFileMetadata } from '@/services/firestore';
+import { deleteFile } from '@/services/files';
 import FileManager from './FileManager';
 
 interface DataUploadProps {
@@ -23,7 +26,24 @@ const DataUpload: React.FC<DataUploadProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentFile, setCurrentFile] = useState<AnalysisResult | null>(null);
+  const [savedFiles, setSavedFiles] = useState<FileMetadata[]>([]);
   const { colors } = useTheme();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      loadSavedFiles();
+    }
+  }, [user]);
+
+  const loadSavedFiles = async () => {
+    try {
+      const files = await getUserFiles();
+      setSavedFiles(files);
+    } catch (err) {
+      console.error('Error loading saved files:', err);
+    }
+  };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -36,7 +56,24 @@ const DataUpload: React.FC<DataUploadProps> = ({
     setIsLoading(true);
     setError(null);
     try {
+      // Upload to R2 and get analysis
       const analysis = await uploadCSV(file);
+      
+      // Save metadata to Firestore
+      const metadata: Omit<FileMetadata, 'id' | 'userId' | 'uploadedAt'> = {
+        filename: file.name,
+        r2Key: analysis.file_key!, // This should be the key returned from R2 upload
+        fileType: file.type,
+        size: file.size,
+        totalRows: analysis.total_rows,
+        totalColumns: analysis.total_columns,
+        numericColumns: Object.keys(analysis.numeric_columns || {}),
+        categoricalColumns: Object.keys(analysis.categorical_columns || {}),
+      };
+
+      await saveFileMetadata(metadata);
+      await loadSavedFiles(); // Refresh the file list
+
       setCurrentFile(analysis);
       onFileUpload(analysis);
     } catch (err) {
@@ -75,8 +112,41 @@ const DataUpload: React.FC<DataUploadProps> = ({
     }
   };
 
-  const handleDeleteFile = (fileKey: string) => {
-    setCurrentFile(null);
+  const handleDeleteFile = async (fileId: string) => {
+    try {
+      const fileToDelete = savedFiles.find(f => f.id === fileId);
+      if (!fileToDelete) {
+        throw new Error('File not found');
+      }
+      
+      await deleteFile(fileToDelete);
+      await loadSavedFiles();
+      setCurrentFile(null);
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      setError(error instanceof Error ? error.message : 'Failed to delete file');
+    }
+  };
+
+  const handleFileSelect = async (file: FileMetadata) => {
+    try {
+      setIsLoading(true);
+      // Here you would fetch the file from R2 using the r2Key
+      // and perform analysis again if needed
+      // For now, we'll just update the UI
+      setCurrentFile({
+        filename: file.filename,
+        total_rows: file.totalRows,
+        total_columns: file.totalColumns,
+        numeric_columns: file.numericColumns.reduce((acc, col) => ({ ...acc, [col]: true }), {}),
+        categorical_columns: file.categoricalColumns.reduce((acc, col) => ({ ...acc, [col]: true }), {}),
+      });
+    } catch (error) {
+      console.error('Error selecting file:', error);
+      setError('Failed to load file');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const renderFileDetails = () => {
@@ -149,7 +219,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
             }}
             onClick={() => setActiveTab('file')}
           >
-            Upload File
+            Upload
           </button>
           <button
             className="flex-1 px-4 py-2 rounded-lg transition-all duration-200 cursor-pointer"
@@ -286,9 +356,12 @@ const DataUpload: React.FC<DataUploadProps> = ({
       </div>
 
       <FileManager 
-        currentFile={currentFile}
-        onDeleteFile={handleDeleteFile}
+        savedFiles={savedFiles}
+        onFileDelete={handleDeleteFile}
+        onFileSelect={handleFileSelect}
       />
+
+      {currentFile && renderFileDetails()}
     </div>
   );
 };

@@ -9,8 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@firebase/auth": "^1.10.5",
     "@types/uuid": "^10.0.0",
     "chart.js": "^4.4.9",
+    "firebase": "^11.8.0",
     "geist": "^1.4.2",
     "groq-sdk": "^0.21.0",
     "highlight.js": "^11.11.1",
@@ -19,6 +21,7 @@
     "plotly.js-dist-min": "^3.0.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-firebase-hooks": "^5.1.1",
     "react-markdown": "^10.1.0",
     "react-plotly.js": "^2.6.0",
     "react-syntax-highlighter": "^15.6.1",
