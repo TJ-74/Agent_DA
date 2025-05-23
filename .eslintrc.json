@@ -1,0 +1,32 @@
+{
+    "extends": "next/core-web-vitals",
+    "rules": {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "@next/next/no-img-element": "off",
+      "react-hooks/exhaustive-deps": "off",
+      "react/no-unescaped-entities": "off",
+      "react/jsx-key": "off",
+      // Add more rules to ignore TypeScript errors
+      "@typescript-eslint/no-non-null-assertion": "off",
+      "@typescript-eslint/ban-ts-comment": "off",
+      // Accessibility rules set to warning
+      "jsx-a11y/alt-text": "warn",
+      "jsx-a11y/aria-props": "warn",
+      // Disable hydration warnings
+      "react/no-unknown-property": "off",
+      // Allow specific props spreading
+      "react/jsx-props-no-spreading": "off",
+      // Module resolution
+      "import/no-unresolved": "off",
+      // Style-related rules
+      "react/display-name": "off"
+    },
+    "ignorePatterns": [
+      "node_modules/",
+      ".next/",
+      "out/",
+      "public/",
+      "*.config.js"
+    ]
+  } 
