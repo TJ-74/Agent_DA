@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ChatMessage from '@/components/ChatMessage';
 import DataUpload from '@/components/DataUpload';
@@ -95,7 +95,7 @@ const layoutStyles = {
   `,
 };
 
-export default function Dashboard() {
+function DashboardContent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [visualizations, setVisualizations] = useState<any[]>([]);
@@ -492,125 +492,49 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
   }
 
   return (
-    <div className="min-h-screen relative" style={{ background: colors.background.primary }}>
-      <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
+    <div className="flex h-screen">
+      <Navbar />
       
-      {/* Header */}
-      <div className="fixed top-0 left-0 right-0 z-30 px-6 py-4 flex justify-between items-center" 
-        style={{ 
-          background: colors.background.card, 
-          borderBottom: `1px solid ${colors.border.light}`,
-        }}
-      >
-        <h1 className="text-xl font-bold" style={{ color: colors.text.primary }}>Data Analyst Dashboard</h1>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => theme === 'dark' ? setTheme('light') : setTheme('dark')}
-            className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
-            style={{
-              background: colors.background.input,
-              border: `1px solid ${colors.border.light}`,
-              color: colors.text.primary,
-            }}
-            aria-label="Toggle theme"
+      {/* Main Content Area */}
+      <main className={layoutStyles.main} style={{ borderColor: colors.border.light }}>
+        <div className="pt-20 px-6 pb-6 h-full flex flex-col">
+          {/* Chat Container */}
+          <div 
+            ref={chatContainerRef}
+            className="flex-1 overflow-y-auto space-y-4 mb-4"
           >
-            {theme === 'dark' ? '🌞' : '🌙'}
-          </button>
-          <button
-            onClick={logout}
-            className="px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105"
-            style={{
-              background: `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})`,
-              color: colors.text.primary,
-            }}
-          >
-            Logout
-          </button>
-        </div>
-      </div>
-
-      {/* Main Chat Area */}
-      <main className={layoutStyles.main}>
-        <div className="pt-20 px-6 pb-6 h-full">
-          <div className="h-full rounded-2xl shadow-2xl p-6 backdrop-blur-xl overflow-hidden flex flex-col" 
-            style={{ 
-              background: colors.background.card, 
-              border: `1px solid ${colors.border.light}` 
-            }}
-          >
-            {/* File Context Header */}
-            {selectedFile && (
-              <div 
-                className="mb-4 p-3 rounded-xl flex justify-between items-center"
-                style={{ background: colors.background.input }}
-              >
-                <div className="flex items-center gap-2">
-                  <span style={{ color: colors.text.secondary }}>Current File:</span>
-                  <span style={{ color: colors.text.primary }} className="font-medium">
-                    {selectedFile.filename}
-                  </span>
-                  <span style={{ color: colors.text.secondary }} className="text-sm">
-                    ({selectedFile.totalRows} rows, {selectedFile.totalColumns} columns)
-                  </span>
-                </div>
-                <button
-                  onClick={() => setSelectedFile(null)}
-                  className="p-2 rounded-lg hover:bg-opacity-80 transition-all"
-                  style={{ background: colors.background.card }}
-                >
-                  <span style={{ color: colors.text.secondary }}>×</span>
-                </button>
-              </div>
-            )}
-            
-            {/* Chat Messages */}
-            <div 
-              ref={chatContainerRef}
-              className="flex-1 overflow-y-auto mb-4 space-y-4 pr-4 overflow-x-hidden scroll-smooth chat-container"
-              style={{ scrollbarWidth: 'thin' }}
-            >
-              {messages.map((message, index) => renderMessage(message, index))}
-              {isLoading && (
-                <div className="flex justify-center items-center py-4">
-                  <div className="animate-pulse flex space-x-2">
-                    <div className="h-2 w-2 bg-current rounded-full"></div>
-                    <div className="h-2 w-2 bg-current rounded-full"></div>
-                    <div className="h-2 w-2 bg-current rounded-full"></div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Chat Input */}
-            <form onSubmit={handleSendMessage} className="flex gap-4 mt-auto">
-              <input
-                type="text"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                placeholder={selectedFile 
-                  ? `Ask me about ${selectedFile.filename}...` 
-                  : "Select a file or ask me to analyze your data..."}
-                className="flex-1 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200 placeholder-gray-400"
-                style={{
-                  background: colors.background.input,
-                  color: colors.text.primary,
-                  border: `1px solid ${colors.border.light}`,
-                }}
-                disabled={isLoading}
-              />
-              <button
-                type="submit"
-                className="px-6 py-3 rounded-xl transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  background: `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})`,
-                  color: colors.text.primary,
-                }}
-                disabled={isLoading}
-              >
-                {isLoading ? 'Sending...' : 'Send'}
-              </button>
-            </form>
+            {messages.map((message, index) => renderMessage(message, index))}
           </div>
+
+          {/* Input Form */}
+          <form onSubmit={handleSendMessage} className="flex gap-4 mt-auto">
+            <input
+              type="text"
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              placeholder={selectedFile 
+                ? `Ask me about ${selectedFile.filename}...` 
+                : "Select a file or ask me to analyze your data..."}
+              className="flex-1 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200 placeholder-gray-400"
+              style={{
+                background: colors.background.input,
+                color: colors.text.primary,
+                border: `1px solid ${colors.border.light}`,
+              }}
+              disabled={isLoading}
+            />
+            <button
+              type="submit"
+              className="px-6 py-3 rounded-xl transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                background: `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})`,
+                color: colors.text.primary,
+              }}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Sending...' : 'Send'}
+            </button>
+          </form>
         </div>
       </main>
 
@@ -625,7 +549,7 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
         </div>
       </aside>
 
-      {/* Visualizations Section - Only show when needed */}
+      {/* Visualizations Section */}
       {visualizations.length > 0 && (
         <div 
           className="fixed bottom-0 left-0 right-[400px] p-6 z-20"
@@ -651,5 +575,13 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
         </div>
       )}
     </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 } 
