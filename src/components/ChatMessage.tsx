@@ -10,12 +10,17 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import TypewriterText from './TypewriterText';
+import dynamic from 'next/dynamic';
+
+// Dynamically import Plot with SSR disabled
+const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
 
 interface ChatMessageProps {
   message: string;
   isUser: boolean;
   timestamp?: Date;
   typingSpeed?: number;
+  plotData?: any;
   onExecuteCode?: (code: string, language: string) => void;
 }
 
@@ -24,12 +29,57 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
   isUser, 
   timestamp,
   typingSpeed = 2,
+  plotData,
   onExecuteCode
 }) => {
   const { colors, theme } = useTheme();
   const [isTypingComplete, setIsTypingComplete] = useState(isUser);
   const [copiedStates, setCopiedStates] = useState<{ [key: string]: boolean }>({});
   const messageId = useId();
+
+  // Function to render plot from plotData prop
+  const renderPlotFromData = (plotData: any) => {
+    if (!plotData || !plotData.data) return null;
+
+    try {
+      const figure = JSON.parse(plotData.data);
+      
+      return (
+        <div className="w-full max-w-full overflow-x-auto my-4">
+          <Plot
+            data={figure.data}
+            layout={{
+              ...figure.layout,
+              paper_bgcolor: 'transparent',
+              plot_bgcolor: 'transparent',
+              font: {
+                color: theme === 'dark' ? '#fff' : '#000'
+              },
+              width: 800,
+              height: 500,
+              margin: { t: 50, r: 30, b: 50, l: 80 },
+              modebar: {
+                bgcolor: 'transparent',
+                color: theme === 'dark' ? '#fff' : '#000'
+              }
+            }}
+            config={{
+              responsive: true,
+              displayModeBar: true,
+              displaylogo: false,
+              modeBarButtonsToRemove: ['lasso2d', 'select2d']
+            }}
+            className="w-full"
+            useResizeHandler={true}
+            style={{ width: "100%", height: "100%" }}
+          />
+        </div>
+      );
+    } catch (e) {
+      console.error('Error rendering plot:', e);
+      return null;
+    }
+  };
 
   const handleCopy = async (code: string, blockId: string) => {
     await navigator.clipboard.writeText(code);
@@ -64,7 +114,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
     }, 100);
   };
 
-  const components = {
+  const components: Components = {
     code(props: any) {
       const { inline, className, children } = props;
       const match = /language-(\w+)/.exec(className || '');
@@ -179,6 +229,17 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
     h2(props: any) { return <h2 className="text-xl font-bold my-3">{props.children}</h2>; },
     h3(props: any) { return <h3 className="text-lg font-bold my-2">{props.children}</h3>; },
     h4(props: any) { return <h4 className="text-base font-bold my-2">{props.children}</h4>; },
+    p(props: any) {
+      const text = props.children?.[0];
+      if (typeof text === 'string') {
+        // Check if the paragraph contains plot data
+        const plotComponent = renderPlotFromData(props.children[0]);
+        if (plotComponent) {
+          return plotComponent;
+        }
+      }
+      return <p className="my-2">{props.children}</p>;
+    },
   };
 
   return (
@@ -221,12 +282,15 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
               {message}
             </ReactMarkdown>
           ) : (
-            <TypewriterText
-              text={message}
-              speed={typingSpeed}
-              onComplete={handleTypingComplete}
-              components={components}
-            />
+            <>
+              <TypewriterText
+                text={message}
+                speed={typingSpeed}
+                onComplete={handleTypingComplete}
+                components={components}
+              />
+              {plotData && renderPlotFromData(plotData)}
+            </>
           )}
         </div>
         {timestamp && isTypingComplete && (

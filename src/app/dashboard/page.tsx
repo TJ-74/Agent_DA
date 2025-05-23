@@ -9,7 +9,7 @@ import Navbar from '@/components/Navbar';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useFile } from '@/context/FileContext';
-import { generateResponse, ChatMessage as ChatMessageType } from '@/services/groq';
+import { generateResponse, ChatMessage as ChatMessageType, ChatResponse } from '@/services/groq';
 import { AnalysisResult } from '@/services/api';
 import { FileMetadata } from '@/services/firestore';
 import ReactMarkdown from 'react-markdown';
@@ -24,6 +24,7 @@ interface SuggestedQuestion {
 
 interface Message extends ChatMessageType {
   suggestedQuestions?: string[];
+  plotData?: any;
 }
 
 // Add this CSS at the top of the file after imports
@@ -169,16 +170,18 @@ export default function Dashboard() {
 
     try {
       // Get AI response with file context
-      const response = await generateResponse({
+      const data = await generateResponse({
         messages: [...messages, userMessage],
         selectedFile: selectedFile,
       });
       
-      // Add AI response
+      // Add AI response with plot data
       const aiMessage: Message = {
-        text: response,
+        text: data.response,
         isUser: false,
         timestamp: new Date(),
+        plotData: data.plotData,
+        suggestedQuestions: generateSuggestedQuestions(data.response, selectedFile),
       };
       setMessages(prev => [...prev, aiMessage]);
       scrollToBottom();
@@ -269,17 +272,18 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
   const handleAIResponse = async (question: string) => {
     setIsLoading(true);
     try {
-      const response = await generateResponse({
+      const data = await generateResponse({
         messages: [...messages, { text: question, isUser: true, timestamp: new Date() }],
         selectedFile: selectedFile,
       });
       
       // Add AI response with suggested follow-up questions
       const aiMessage: Message = {
-        text: response,
+        text: data.response,
         isUser: false,
         timestamp: new Date(),
-        suggestedQuestions: generateSuggestedQuestions(response, selectedFile),
+        plotData: data.plotData,
+        suggestedQuestions: generateSuggestedQuestions(data.response, selectedFile),
       };
       setMessages(prev => [...prev, aiMessage]);
       scrollToBottom();
@@ -302,24 +306,24 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
     
     // Basic set of questions based on file type and content
     const suggestions = [
-      `Can you show me the distribution of numeric columns in ${file.filename}?`,
-      `What are the correlations between variables in ${file.filename}?`,
-      `Can you identify any outliers in ${file.filename}?`,
-      `What insights can you provide about ${file.filename}?`,
+      `Can you show me a box plot of ${file.numericColumns[0] || 'numeric columns'}?`,
+      `Can you create a histogram of ${file.numericColumns[0] || 'the data'}?`,
+      `What are the correlations between variables?`,
+      `Can you identify any outliers in the data?`,
     ];
     
     // Add more specific questions based on file content
-    if (file.numericColumns.length > 0) {
-      suggestions.push(`What is the average of ${file.numericColumns[0]}?`);
+    if (file.numericColumns.length > 1) {
+      suggestions.push(`Can you show a scatter plot of ${file.numericColumns[0]} vs ${file.numericColumns[1]}?`);
     }
     if (file.categoricalColumns.length > 0) {
-      suggestions.push(`What are the unique values in ${file.categoricalColumns[0]}?`);
+      suggestions.push(`Show me a bar chart of ${file.numericColumns[0]} by ${file.categoricalColumns[0]}`);
     }
     
     return suggestions.slice(0, 4); // Limit to 4 suggestions
   };
 
-  // Update the message rendering to include clickable suggestions
+  // Update the message rendering to include clickable suggestions and plot visualization
   const renderMessage = (message: Message, index: number) => (
     <div
       key={index}
@@ -433,6 +437,17 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
             >
               {message.text}
             </ReactMarkdown>
+            
+            {/* Render plot if plotData exists */}
+            {message.plotData && (
+              <div className="mt-4 border rounded-lg p-4" style={{ borderColor: colors.border.light }}>
+                <ChatMessage
+                  message=""
+                  isUser={false}
+                  plotData={message.plotData}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}
