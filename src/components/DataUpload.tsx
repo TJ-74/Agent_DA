@@ -7,6 +7,7 @@ import { uploadCSV, AnalysisResult } from '@/services/api';
 import { saveFileMetadata, getUserFiles, FileMetadata, deleteFileMetadata } from '@/services/firestore';
 import { deleteFile } from '@/services/files';
 import FileManager from './FileManager';
+import { useFile } from '@/context/FileContext';
 
 interface DataUploadProps {
   onFileUpload: (analysis: AnalysisResult) => void;
@@ -27,8 +28,9 @@ const DataUpload: React.FC<DataUploadProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [currentFile, setCurrentFile] = useState<AnalysisResult | null>(null);
   const [savedFiles, setSavedFiles] = useState<FileMetadata[]>([]);
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
   const { user } = useAuth();
+  const { selectedFile, setSelectedFile } = useFile();
 
   useEffect(() => {
     if (user) {
@@ -206,36 +208,60 @@ const DataUpload: React.FC<DataUploadProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl shadow-2xl p-6 backdrop-blur-xl" 
+    <div className="space-y-4 lg:space-y-6">
+      {selectedFile && (
+        <div className="p-3 lg:p-4 rounded-lg border" style={{ borderColor: colors.border.light }}>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm lg:text-base font-medium" style={{ color: colors.text.primary }}>
+              Selected File
+            </h3>
+            <button
+              onClick={() => setSelectedFile(null)}
+              className="text-xs lg:text-sm px-2 lg:px-3 py-1 rounded-lg transition-all duration-200 hover:scale-105 cursor-pointer"
+              style={{
+                background: colors.background.input,
+                border: `1px solid ${colors.border.light}`,
+                color: colors.text.primary,
+              }}
+            >
+              Unselect
+            </button>
+          </div>
+          <p className="text-xs lg:text-sm" style={{ color: colors.text.secondary }}>
+            {selectedFile.filename}
+          </p>
+        </div>
+      )}
+
+      <div className="rounded-xl lg:rounded-2xl shadow-lg lg:shadow-2xl p-4 lg:p-6 backdrop-blur-xl" 
         style={{ background: colors.background.card, border: `1px solid ${colors.border.light}` }}
       >
-        <div className="flex space-x-2 mb-6 rounded-xl p-1" style={{ background: colors.background.input }}>
+        <div className="flex space-x-1 lg:space-x-2 mb-4 lg:mb-6 rounded-xl p-1" style={{ background: colors.background.input }}>
           <button
-            className="flex-1 px-4 py-2 rounded-lg transition-all duration-200 cursor-pointer"
+            className="flex-1 px-3 lg:px-4 py-1.5 lg:py-2 rounded-lg transition-all duration-200 cursor-pointer text-xs lg:text-sm"
             style={{
               background: activeTab === 'file' ? `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})` : 'transparent',
-              color: activeTab === 'file' ? colors.text.primary : colors.text.secondary,
+              color: activeTab === 'file' ? '#FFFFFF' : colors.text.secondary,
             }}
             onClick={() => setActiveTab('file')}
           >
             Upload
           </button>
           <button
-            className="flex-1 px-4 py-2 rounded-lg transition-all duration-200 cursor-pointer"
+            className="flex-1 px-3 lg:px-4 py-1.5 lg:py-2 rounded-lg transition-all duration-200 cursor-pointer text-xs lg:text-sm"
             style={{
               background: activeTab === 'database' ? `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})` : 'transparent',
-              color: activeTab === 'database' ? colors.text.primary : colors.text.secondary,
+              color: activeTab === 'database' ? '#FFFFFF' : colors.text.secondary,
             }}
             onClick={() => setActiveTab('database')}
           >
             Database
           </button>
           <button
-            className="flex-1 px-4 py-2 rounded-lg transition-all duration-200 cursor-pointer"
+            className="flex-1 px-3 lg:px-4 py-1.5 lg:py-2 rounded-lg transition-all duration-200 cursor-pointer text-xs lg:text-sm"
             style={{
               background: activeTab === 'api' ? `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})` : 'transparent',
-              color: activeTab === 'api' ? colors.text.primary : colors.text.secondary,
+              color: activeTab === 'api' ? '#FFFFFF' : colors.text.secondary,
             }}
             onClick={() => setActiveTab('api')}
           >
@@ -245,7 +271,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
 
         {activeTab === 'file' && (
           <div
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${
+            className={`border-2 border-dashed rounded-lg lg:rounded-xl p-6 lg:p-8 text-center transition-all duration-200 cursor-pointer ${
               isLoading ? 'opacity-50 pointer-events-none' : ''
             }`}
             style={{
@@ -266,24 +292,24 @@ const DataUpload: React.FC<DataUploadProps> = ({
             />
             <label
               htmlFor="file-upload"
-              className={`cursor-pointer px-6 py-3 rounded-xl inline-block transition-all duration-200 transform hover:scale-105 hover:shadow-lg ${
+              className={`cursor-pointer px-4 lg:px-6 py-2 lg:py-3 rounded-lg lg:rounded-xl inline-block transition-all duration-200 transform hover:scale-105 hover:shadow-lg text-sm lg:text-base ${
                 isLoading ? 'opacity-50 cursor-not-allowed' : ''
               }`}
               style={{
                 background: `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})`,
-                color: colors.text.primary,
+                color: '#FFFFFF',
               }}
             >
               {isLoading ? 'Uploading...' : 'Choose File'}
             </label>
-            <p className="mt-4 text-sm" style={{ color: colors.text.secondary }}>
+            <p className="mt-3 lg:mt-4 text-xs lg:text-sm" style={{ color: colors.text.secondary }}>
               {isLoading ? 'Processing your file...' : 'Drag and drop your CSV file here or click to browse'}
             </p>
-            <p className="text-xs mt-2" style={{ color: colors.text.muted }}>
+            <p className="text-[10px] lg:text-xs mt-2" style={{ color: colors.text.muted }}>
               Supported format: CSV
             </p>
             {error && (
-              <p className="mt-4 text-sm text-red-500">
+              <p className="mt-3 lg:mt-4 text-xs lg:text-sm text-red-500">
                 {error}
               </p>
             )}
@@ -291,19 +317,23 @@ const DataUpload: React.FC<DataUploadProps> = ({
         )}
 
         {activeTab === 'database' && (
-          <form onSubmit={handleDatabaseConnect} className="space-y-4">
+          <form onSubmit={handleDatabaseConnect} className="space-y-3 lg:space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: colors.text.secondary }}>
+              <label className="block text-xs lg:text-sm font-medium mb-1.5 lg:mb-2" style={{ color: colors.text.secondary }}>
                 Connection String
               </label>
               <input
                 type="text"
                 value={connectionString}
                 onChange={(e) => setConnectionString(e.target.value)}
-                className="w-full rounded-xl px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200"
+                className={`w-full rounded-lg lg:rounded-xl px-3 lg:px-4 py-2 lg:py-3 focus:outline-none focus:ring-2 transition-all duration-200 text-xs lg:text-sm ${
+                  theme === 'light' 
+                    ? 'placeholder:text-gray-500' 
+                    : 'placeholder:text-gray-400'
+                }`}
                 style={{
                   background: colors.background.input,
-                  color: '#FFFFFF',
+                  color: colors.text.primary,
                   border: `1px solid ${colors.border.light}`,
                 }}
                 placeholder="postgresql://user:password@localhost:5432/dbname"
@@ -311,10 +341,10 @@ const DataUpload: React.FC<DataUploadProps> = ({
             </div>
             <button
               type="submit"
-              className="w-full px-6 py-3 rounded-xl transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2"
+              className="w-full px-4 lg:px-6 py-2 lg:py-3 rounded-lg lg:rounded-xl transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 text-sm lg:text-base"
               style={{
                 background: `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})`,
-                color: colors.text.primary,
+                color: '#FFFFFF',
               }}
             >
               Connect
@@ -323,19 +353,23 @@ const DataUpload: React.FC<DataUploadProps> = ({
         )}
 
         {activeTab === 'api' && (
-          <form onSubmit={handleApiImport} className="space-y-4">
+          <form onSubmit={handleApiImport} className="space-y-3 lg:space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: colors.text.secondary }}>
+              <label className="block text-xs lg:text-sm font-medium mb-1.5 lg:mb-2" style={{ color: colors.text.secondary }}>
                 API Endpoint
               </label>
               <input
                 type="url"
                 value={apiUrl}
                 onChange={(e) => setApiUrl(e.target.value)}
-                className="w-full rounded-xl px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200"
+                className={`w-full rounded-lg lg:rounded-xl px-3 lg:px-4 py-2 lg:py-3 focus:outline-none focus:ring-2 transition-all duration-200 text-xs lg:text-sm ${
+                  theme === 'light' 
+                    ? 'placeholder:text-gray-500' 
+                    : 'placeholder:text-gray-400'
+                }`}
                 style={{
                   background: colors.background.input,
-                  color: '#FFFFFF',
+                  color: colors.text.primary,
                   border: `1px solid ${colors.border.light}`,
                 }}
                 placeholder="https://api.example.com/data"
@@ -343,10 +377,10 @@ const DataUpload: React.FC<DataUploadProps> = ({
             </div>
             <button
               type="submit"
-              className="w-full px-6 py-3 rounded-xl transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2"
+              className="w-full px-4 lg:px-6 py-2 lg:py-3 rounded-lg lg:rounded-xl transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 text-sm lg:text-base"
               style={{
                 background: `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})`,
-                color: colors.text.primary,
+                color: '#FFFFFF',
               }}
             >
               Import

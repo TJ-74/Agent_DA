@@ -277,7 +277,91 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkMath]}
               rehypePlugins={[rehypeKatex]}
-              components={components}
+              components={{
+                ...components,
+                p: (props: any) => (
+                  <p 
+                    className="my-2"
+                    style={{
+                      textShadow: theme === 'dark' ? '0 0 10px rgba(255, 255, 255, 0.3)' : 'none'
+                    }}
+                  >
+                    {props.children}
+                  </p>
+                ),
+                h1: (props: any) => (
+                  <h1 
+                    className="text-2xl font-bold my-4"
+                    style={{
+                      textShadow: theme === 'dark' ? '0 0 10px rgba(255, 255, 255, 0.3)' : 'none'
+                    }}
+                  >
+                    {props.children}
+                  </h1>
+                ),
+                h2: (props: any) => (
+                  <h2 
+                    className="text-xl font-bold my-3"
+                    style={{
+                      textShadow: theme === 'dark' ? '0 0 10px rgba(255, 255, 255, 0.3)' : 'none'
+                    }}
+                  >
+                    {props.children}
+                  </h2>
+                ),
+                h3: (props: any) => (
+                  <h3 
+                    className="text-lg font-bold my-2"
+                    style={{
+                      textShadow: theme === 'dark' ? '0 0 10px rgba(255, 255, 255, 0.3)' : 'none'
+                    }}
+                  >
+                    {props.children}
+                  </h3>
+                ),
+                h4: (props: any) => (
+                  <h4 
+                    className="text-base font-bold my-2"
+                    style={{
+                      textShadow: theme === 'dark' ? '0 0 10px rgba(255, 255, 255, 0.3)' : 'none'
+                    }}
+                  >
+                    {props.children}
+                  </h4>
+                ),
+                li: (props: any) => (
+                  <li 
+                    className="ml-4"
+                    style={{
+                      textShadow: theme === 'dark' ? '0 0 10px rgba(255, 255, 255, 0.3)' : 'none'
+                    }}
+                  >
+                    {props.children}
+                  </li>
+                ),
+                td: (props: any) => (
+                  <td
+                    className="px-6 py-4 whitespace-nowrap text-sm"
+                    style={{ 
+                      color: colors.text.primary,
+                      textShadow: theme === 'dark' ? '0 0 10px rgba(255, 255, 255, 0.3)' : 'none'
+                    }}
+                  >
+                    {props.children}
+                  </td>
+                ),
+                th: (props: any) => (
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                    style={{ 
+                      color: colors.text.secondary,
+                      textShadow: theme === 'dark' ? '0 0 10px rgba(255, 255, 255, 0.3)' : 'none'
+                    }}
+                  >
+                    {props.children}
+                  </th>
+                ),
+              }}
             >
               {message}
             </ReactMarkdown>
@@ -287,7 +371,91 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                 text={message}
                 speed={typingSpeed}
                 onComplete={handleTypingComplete}
-                components={components}
+                components={{
+                  ...components,
+                  p: (props: any) => (
+                    <p 
+                      className="my-2"
+                      style={{
+                        textShadow: theme === 'dark' ? '0 0 10px rgba(255, 255, 255, 0.3)' : 'none'
+                      }}
+                    >
+                      {props.children}
+                    </p>
+                  ),
+                  h1: (props: any) => (
+                    <h1 
+                      className="text-2xl font-bold my-4"
+                      style={{
+                        textShadow: theme === 'dark' ? '0 0 10px rgba(255, 255, 255, 0.3)' : 'none'
+                      }}
+                    >
+                      {props.children}
+                    </h1>
+                  ),
+                  h2: (props: any) => (
+                    <h2 
+                      className="text-xl font-bold my-3"
+                      style={{
+                        textShadow: theme === 'dark' ? '0 0 10px rgba(255, 255, 255, 0.3)' : 'none'
+                      }}
+                    >
+                      {props.children}
+                    </h2>
+                  ),
+                  h3: (props: any) => (
+                    <h3 
+                      className="text-lg font-bold my-2"
+                      style={{
+                        textShadow: theme === 'dark' ? '0 0 10px rgba(255, 255, 255, 0.3)' : 'none'
+                      }}
+                    >
+                      {props.children}
+                    </h3>
+                  ),
+                  h4: (props: any) => (
+                    <h4 
+                      className="text-base font-bold my-2"
+                      style={{
+                        textShadow: theme === 'dark' ? '0 0 10px rgba(255, 255, 255, 0.3)' : 'none'
+                      }}
+                    >
+                      {props.children}
+                    </h4>
+                  ),
+                  li: (props: any) => (
+                    <li 
+                      className="ml-4"
+                      style={{
+                        textShadow: theme === 'dark' ? '0 0 10px rgba(255, 255, 255, 0.3)' : 'none'
+                      }}
+                    >
+                      {props.children}
+                    </li>
+                  ),
+                  td: (props: any) => (
+                    <td
+                      className="px-6 py-4 whitespace-nowrap text-sm"
+                      style={{ 
+                        color: colors.text.primary,
+                        textShadow: theme === 'dark' ? '0 0 10px rgba(255, 255, 255, 0.3)' : 'none'
+                      }}
+                    >
+                      {props.children}
+                    </td>
+                  ),
+                  th: (props: any) => (
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                      style={{ 
+                        color: colors.text.secondary,
+                        textShadow: theme === 'dark' ? '0 0 10px rgba(255, 255, 255, 0.3)' : 'none'
+                      }}
+                    >
+                      {props.children}
+                    </th>
+                  ),
+                }}
               />
               {plotData && renderPlotFromData(plotData)}
             </>
