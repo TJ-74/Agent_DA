@@ -11,18 +11,16 @@ export default function Home() {
   const { colors } = useTheme();
 
   useEffect(() => {
+    // If we have user info (either logged in or not), redirect immediately
     if (!loading) {
-      if (user) {
-        router.push('/dashboard');
-      } else {
-        router.push('/login');
-      }
+      router.replace(user ? '/dashboard' : '/login');
     }
   }, [user, loading, router]);
 
+  // Show minimal loading state
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: colors.background.primary }}>
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary"></div>
     </div>
   );
 }

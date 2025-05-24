@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ChatMessage from '@/components/ChatMessage';
 import DataUpload from '@/components/DataUpload';
@@ -97,27 +97,36 @@ const layoutStyles = {
   `,
 };
 
-function DashboardContent() {
+export default function DashboardPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [visualizations, setVisualizations] = useState<any[]>([]);
-  const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessageId, setLoadingMessageId] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [savedFiles, setSavedFiles] = useState<FileMetadata[]>([]);
-  const { colors, theme, setTheme } = useTheme();
-  const { user, loading, logout } = useAuth();
+  const { colors, theme } = useTheme();
+  const { user, loading } = useAuth();
   const { selectedFile, setSelectedFile } = useFile();
   const router = useRouter();
   const searchParams = useSearchParams();
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
+  // Redirect if not authenticated
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/login');
+      router.replace('/login');
     }
   }, [user, loading, router]);
+
+  // Initialize welcome message
+  useEffect(() => {
+    setMessages([{
+      text: "Welcome! I'm your Data Analyst Agent. How can I help you analyze your data today?",
+      isUser: false,
+      timestamp: new Date(),
+    }]);
+  }, []);
 
   // Restore selected file from URL
   useEffect(() => {
@@ -143,18 +152,6 @@ function DashboardContent() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  useEffect(() => {
-    setIsClient(true);
-    // Initialize messages only on the client side
-    setMessages([
-      {
-        text: "Welcome! I'm your Data Analyst Agent. How can I help you analyze your data today?",
-        isUser: false,
-        timestamp: new Date(),
-      },
-    ]);
-  }, []);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -623,12 +620,18 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
     </div>
   );
 
-  if (loading || !isClient) {
+  // Simplified loading state
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: colors.background.primary }}>
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary"></div>
       </div>
     );
+  }
+
+  // If not authenticated, return null (redirect will happen)
+  if (!user) {
+    return null;
   }
 
   return (
@@ -720,13 +723,5 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
         </div>
       )}
     </div>
-  );
-}
-
-export default function Dashboard() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <DashboardContent />
-    </Suspense>
   );
 } 

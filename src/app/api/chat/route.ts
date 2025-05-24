@@ -63,19 +63,52 @@ function cleanResponse(response: string): string {
   return cleanedResponse;
 }
 
-// Add this function to check if query needs data analysis
-function needsDataAnalysis(query: string): boolean {
-  const analysisKeywords = [
-    'analyze', 'analysis', 'plot', 'graph', 'chart', 'visualize', 'correlation',
-    'trend', 'pattern', 'distribution', 'statistics', 'mean', 'median', 'average',
-    'sum', 'count', 'min', 'max', 'standard deviation', 'variance', 'percentile',
-    'histogram', 'box plot', 'scatter', 'bar chart', 'line chart', 'pie chart',
-    'frequency', 'proportion', 'ratio', 'compare', 'comparison', 'relationship',
-    'regression', 'outlier', 'anomaly', 'cluster', 'group', 'category'
-  ];
+// Function to determine if query needs data analysis using LLM
+async function needsDataAnalysis(query: string, groq: Groq): Promise<boolean> {
+  const systemMessage: FormattedMessage = {
+    role: 'system' as const,
+    content: `You are a query analyzer that determines if a user's question requires accessing or analyzing file data.
+Return ONLY "true" or "false".
 
-  const lowerQuery = query.toLowerCase();
-  return analysisKeywords.some(keyword => lowerQuery.includes(keyword));
+Return true if the query:
+- Asks about file contents
+- Requires reading data
+- Needs statistical analysis
+- Requests data visualization
+- Requires data comparison
+- Asks about specific values, rows, or columns
+- Needs pattern analysis
+- Requires any form of data processing
+
+Return false if the query:
+- Is a general greeting
+- Asks about the agent's capabilities
+- Is a general "how-to" question
+- Is about the interface or system
+- Doesn't require file access`
+  };
+
+  const userMessage: FormattedMessage = {
+    role: 'user' as const,
+    content: query
+  };
+
+  try {
+    const completion = await groq.chat.completions.create({
+      messages: [systemMessage, userMessage],
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0,
+      max_tokens: 10,
+      stream: false,
+    });
+
+    const response = completion.choices[0]?.message?.content?.toLowerCase().trim();
+    return response === 'true';
+  } catch (error) {
+    console.error('Error in needsDataAnalysis:', error);
+    // If there's an error in determination, default to true for safety
+    return true;
+  }
 }
 
 export async function POST(request: Request) {
@@ -123,7 +156,9 @@ export async function POST(request: Request) {
     let analysisError = null;
     let plotData = null;
     
-    if (selectedFile?.r2Key && needsDataAnalysis(lastMessage.text)) {
+    const requiresAnalysis = await needsDataAnalysis(lastMessage.text, groq);
+    
+    if (selectedFile?.r2Key && requiresAnalysis) {
       try {
         const analysisResponse = await fetch(`${API_URL}/api/chat/analyze/${selectedFile.r2Key}`, {
           method: 'POST',
