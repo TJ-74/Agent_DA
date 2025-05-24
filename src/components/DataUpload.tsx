@@ -7,6 +7,7 @@ import { uploadCSV, AnalysisResult } from '@/services/api';
 import { saveFileMetadata, getUserFiles, FileMetadata, deleteFileMetadata } from '@/services/firestore';
 import { deleteFile } from '@/services/files';
 import FileManager from './FileManager';
+import { useFile } from '@/context/FileContext';
 
 interface DataUploadProps {
   onFileUpload: (analysis: AnalysisResult) => void;
@@ -27,8 +28,9 @@ const DataUpload: React.FC<DataUploadProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [currentFile, setCurrentFile] = useState<AnalysisResult | null>(null);
   const [savedFiles, setSavedFiles] = useState<FileMetadata[]>([]);
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
   const { user } = useAuth();
+  const { selectedFile, setSelectedFile } = useFile();
 
   useEffect(() => {
     if (user) {
@@ -207,6 +209,30 @@ const DataUpload: React.FC<DataUploadProps> = ({
 
   return (
     <div className="space-y-6">
+      {selectedFile && (
+        <div className="p-4 rounded-lg border" style={{ borderColor: colors.border.light }}>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-medium" style={{ color: colors.text.primary }}>
+              Selected File
+            </h3>
+            <button
+              onClick={() => setSelectedFile(null)}
+              className="text-sm px-3 py-1 rounded-lg transition-all duration-200 hover:scale-105 cursor-pointer"
+              style={{
+                background: colors.background.input,
+                border: `1px solid ${colors.border.light}`,
+                color: colors.text.primary,
+              }}
+            >
+              Unselect
+            </button>
+          </div>
+          <p className="text-sm" style={{ color: colors.text.secondary }}>
+            {selectedFile.filename}
+          </p>
+        </div>
+      )}
+
       <div className="rounded-2xl shadow-2xl p-6 backdrop-blur-xl" 
         style={{ background: colors.background.card, border: `1px solid ${colors.border.light}` }}
       >
@@ -215,7 +241,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
             className="flex-1 px-4 py-2 rounded-lg transition-all duration-200 cursor-pointer"
             style={{
               background: activeTab === 'file' ? `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})` : 'transparent',
-              color: activeTab === 'file' ? colors.text.primary : colors.text.secondary,
+              color: activeTab === 'file' ? '#FFFFFF' : colors.text.secondary,
             }}
             onClick={() => setActiveTab('file')}
           >
@@ -225,7 +251,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
             className="flex-1 px-4 py-2 rounded-lg transition-all duration-200 cursor-pointer"
             style={{
               background: activeTab === 'database' ? `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})` : 'transparent',
-              color: activeTab === 'database' ? colors.text.primary : colors.text.secondary,
+              color: activeTab === 'database' ? '#FFFFFF' : colors.text.secondary,
             }}
             onClick={() => setActiveTab('database')}
           >
@@ -235,7 +261,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
             className="flex-1 px-4 py-2 rounded-lg transition-all duration-200 cursor-pointer"
             style={{
               background: activeTab === 'api' ? `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})` : 'transparent',
-              color: activeTab === 'api' ? colors.text.primary : colors.text.secondary,
+              color: activeTab === 'api' ? '#FFFFFF' : colors.text.secondary,
             }}
             onClick={() => setActiveTab('api')}
           >
@@ -271,7 +297,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
               }`}
               style={{
                 background: `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})`,
-                color: colors.text.primary,
+                color: '#FFFFFF',
               }}
             >
               {isLoading ? 'Uploading...' : 'Choose File'}
@@ -300,10 +326,14 @@ const DataUpload: React.FC<DataUploadProps> = ({
                 type="text"
                 value={connectionString}
                 onChange={(e) => setConnectionString(e.target.value)}
-                className="w-full rounded-xl px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200"
+                className={`w-full rounded-xl px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200 ${
+                  theme === 'light' 
+                    ? 'placeholder:text-gray-500' 
+                    : 'placeholder:text-gray-400'
+                }`}
                 style={{
                   background: colors.background.input,
-                  color: '#FFFFFF',
+                  color: colors.text.primary,
                   border: `1px solid ${colors.border.light}`,
                 }}
                 placeholder="postgresql://user:password@localhost:5432/dbname"
@@ -314,7 +344,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
               className="w-full px-6 py-3 rounded-xl transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2"
               style={{
                 background: `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})`,
-                color: colors.text.primary,
+                color: '#FFFFFF',
               }}
             >
               Connect
@@ -332,10 +362,14 @@ const DataUpload: React.FC<DataUploadProps> = ({
                 type="url"
                 value={apiUrl}
                 onChange={(e) => setApiUrl(e.target.value)}
-                className="w-full rounded-xl px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200"
+                className={`w-full rounded-xl px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200 ${
+                  theme === 'light' 
+                    ? 'placeholder:text-gray-500' 
+                    : 'placeholder:text-gray-400'
+                }`}
                 style={{
                   background: colors.background.input,
-                  color: '#FFFFFF',
+                  color: colors.text.primary,
                   border: `1px solid ${colors.border.light}`,
                 }}
                 placeholder="https://api.example.com/data"
@@ -346,7 +380,7 @@ const DataUpload: React.FC<DataUploadProps> = ({
               className="w-full px-6 py-3 rounded-xl transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2"
               style={{
                 background: `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})`,
-                color: colors.text.primary,
+                color: '#FFFFFF',
               }}
             >
               Import

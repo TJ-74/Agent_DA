@@ -63,7 +63,23 @@ function cleanResponse(response: string): string {
   return cleanedResponse;
 }
 
+// Add this function to check if query needs data analysis
+function needsDataAnalysis(query: string): boolean {
+  const analysisKeywords = [
+    'analyze', 'analysis', 'plot', 'graph', 'chart', 'visualize', 'correlation',
+    'trend', 'pattern', 'distribution', 'statistics', 'mean', 'median', 'average',
+    'sum', 'count', 'min', 'max', 'standard deviation', 'variance', 'percentile',
+    'histogram', 'box plot', 'scatter', 'bar chart', 'line chart', 'pie chart',
+    'frequency', 'proportion', 'ratio', 'compare', 'comparison', 'relationship',
+    'regression', 'outlier', 'anomaly', 'cluster', 'group', 'category'
+  ];
+
+  const lowerQuery = query.toLowerCase();
+  return analysisKeywords.some(keyword => lowerQuery.includes(keyword));
+}
+
 export async function POST(request: Request) {
+  const startTime = Date.now();
   try {
     const { messages, selectedFile }: ChatRequest = await request.json();
     const lastMessage = messages[messages.length - 1];
@@ -74,12 +90,40 @@ export async function POST(request: Request) {
       content: msg.text
     }));
 
-    // If a file is selected, get its analysis from the backend
+    // For general queries, use a simpler system message and faster model
+    if (!selectedFile) {
+      const systemMessage: FormattedMessage = {
+        role: 'system',
+        content: 'You are a helpful AI assistant. Provide clear and concise responses.'
+      };
+      formattedMessages.unshift(systemMessage);
+
+      const completion = await groq.chat.completions.create({
+        messages: formattedMessages,
+        model: 'llama-3.3-70b-versatile',
+        temperature: 0.7,
+        max_tokens: 512,
+        top_p: 0.9,
+        stream: true,
+      });
+
+      let response = '';
+      for await (const chunk of completion) {
+        if (chunk.choices[0]?.delta?.content) {
+          response += chunk.choices[0].delta.content;
+        }
+      }
+
+      console.log(`API Response Time (General Query): ${Date.now() - startTime}ms`);
+      return NextResponse.json({ response });
+    }
+
+    // Only analyze data if the query requires it
     let fileAnalysis = null;
     let analysisError = null;
     let plotData = null;
     
-    if (selectedFile?.r2Key) {
+    if (selectedFile?.r2Key && needsDataAnalysis(lastMessage.text)) {
       try {
         const analysisResponse = await fetch(`${API_URL}/api/chat/analyze/${selectedFile.r2Key}`, {
           method: 'POST',
@@ -111,10 +155,10 @@ export async function POST(request: Request) {
       }
     }
 
-    // Add system message with file context, analysis, and formatting instructions
+    // Add system message with appropriate context
     const systemMessage: FormattedMessage = {
-      role: 'system' as const,
-      content: `You are a Data Analysis Agent helping analyze ${selectedFile ? `the file "${selectedFile.filename}"` : 'data files'}. 
+      role: 'system',
+      content: `You are a Data Analysis Agent helping analyze the file "${selectedFile.filename}". 
 
 CRITICAL INSTRUCTIONS - READ CAREFULLY:
 1. For data visualization:
@@ -152,24 +196,31 @@ Please inform the user about the analysis error and provide guidance on how to p
     };
     formattedMessages.unshift(systemMessage);
 
-    // Get AI response
     const completion = await groq.chat.completions.create({
       messages: formattedMessages,
       model: 'llama-3.3-70b-versatile',
-      temperature: 0.7,
-      max_tokens: 4096,
+      temperature: 0.5,
+      max_tokens: 2048,
       top_p: 0.9,
-      stream: false,
+      stream: true,
     });
 
-    let response = completion.choices[0]?.message?.content || 'I apologize, but I was unable to generate a response.';
+    let response = '';
+    for await (const chunk of completion) {
+      if (chunk.choices[0]?.delta?.content) {
+        response += chunk.choices[0].delta.content;
+      }
+    }
+
+    if (!response) {
+      response = 'I apologize, but I was unable to generate a response.';
+    }
     
-    // Clean the response if we have plot data
     if (plotData) {
       response = cleanResponse(response);
     }
 
-    // Return both the cleaned response and plot data
+    console.log(`API Response Time (Data Analysis): ${Date.now() - startTime}ms`);
     return NextResponse.json({
       response,
       plotData: plotData ? {
@@ -180,6 +231,7 @@ Please inform the user about the analysis error and provide guidance on how to p
     });
   } catch (error) {
     console.error('Error in chat route:', error);
+    console.log(`API Error Response Time: ${Date.now() - startTime}ms`);
     const errorMessage = error instanceof Error ? error.message : 'Failed to generate response';
     return NextResponse.json(
       { error: errorMessage },

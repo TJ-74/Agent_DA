@@ -16,6 +16,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Components } from 'react-markdown';
 import type { Options } from 'react-markdown';
+import TypewriterText from '@/components/TypewriterText';
+import LoadingDots from '@/components/LoadingDots';
 
 interface SuggestedQuestion {
   text: string;
@@ -101,6 +103,7 @@ function DashboardContent() {
   const [visualizations, setVisualizations] = useState<any[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessageId, setLoadingMessageId] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [savedFiles, setSavedFiles] = useState<FileMetadata[]>([]);
   const { colors, theme, setTheme } = useTheme();
@@ -157,46 +160,63 @@ function DashboardContent() {
     e.preventDefault();
     if (!inputMessage.trim() || isLoading) return;
 
-    // Add user message
     const userMessage: Message = {
       text: inputMessage,
       isUser: true,
       timestamp: new Date(),
     };
-    setMessages(prev => [...prev, userMessage]);
+
+    const loadingId = Date.now().toString();
+    const loadingMessage: Message = {
+      text: "Thinking...",
+      isUser: false,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMessage, loadingMessage]);
+    setLoadingMessageId(loadingId);
     setInputMessage('');
     setIsLoading(true);
     scrollToBottom();
 
     try {
-      // Get AI response with file context
       const data = await generateResponse({
         messages: [...messages, userMessage],
         selectedFile: selectedFile,
       });
       
-      // Add AI response with plot data
-      const aiMessage: Message = {
-        text: data.response,
-        isUser: false,
-        timestamp: new Date(),
-        plotData: data.plotData,
-        suggestedQuestions: generateSuggestedQuestions(data.response, selectedFile),
-      };
-      setMessages(prev => [...prev, aiMessage]);
+      setMessages(prev => {
+        const lastMessage = prev[prev.length - 1];
+        if (lastMessage && lastMessage.text === "Thinking...") {
+          const newMessages = prev.slice(0, -1);
+          return [...newMessages, {
+            text: data.response,
+            isUser: false,
+            timestamp: new Date(),
+            plotData: data.plotData,
+            suggestedQuestions: generateSuggestedQuestions(data.response, selectedFile),
+          }];
+        }
+        return prev;
+      });
       scrollToBottom();
     } catch (error) {
       console.error('Error getting response:', error);
-      // Add error message
-      const errorMessage: Message = {
-        text: "I apologize, but I encountered an error. Please try again.",
-        isUser: false,
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
-      scrollToBottom();
+      setMessages(prev => {
+        const lastMessage = prev[prev.length - 1];
+        if (lastMessage && lastMessage.text === "Thinking...") {
+          const newMessages = prev.slice(0, -1);
+          return [...newMessages, {
+            text: "I apologize, but I encountered an error. Please try again.",
+            isUser: false,
+            timestamp: new Date(),
+          }];
+        }
+        return prev;
+      });
     } finally {
       setIsLoading(false);
+      setLoadingMessageId(null);
     }
   };
 
@@ -270,33 +290,57 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
   };
 
   const handleAIResponse = async (question: string) => {
+    if (isLoading) return;
+
+    const loadingId = Date.now().toString();
+    const loadingMessage: Message = {
+      text: "Thinking...",
+      isUser: false,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, loadingMessage]);
+    setLoadingMessageId(loadingId);
     setIsLoading(true);
+
     try {
       const data = await generateResponse({
         messages: [...messages, { text: question, isUser: true, timestamp: new Date() }],
         selectedFile: selectedFile,
       });
       
-      // Add AI response with suggested follow-up questions
-      const aiMessage: Message = {
-        text: data.response,
-        isUser: false,
-        timestamp: new Date(),
-        plotData: data.plotData,
-        suggestedQuestions: generateSuggestedQuestions(data.response, selectedFile),
-      };
-      setMessages(prev => [...prev, aiMessage]);
+      setMessages(prev => {
+        const lastMessage = prev[prev.length - 1];
+        if (lastMessage && lastMessage.text === "Thinking...") {
+          const newMessages = prev.slice(0, -1);
+          return [...newMessages, {
+            text: data.response,
+            isUser: false,
+            timestamp: new Date(),
+            plotData: data.plotData,
+            suggestedQuestions: generateSuggestedQuestions(data.response, selectedFile),
+          }];
+        }
+        return prev;
+      });
       scrollToBottom();
     } catch (error) {
       console.error('Error getting response:', error);
-      const errorMessage: Message = {
-        text: "I apologize, but I encountered an error. Please try again.",
-        isUser: false,
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => {
+        const lastMessage = prev[prev.length - 1];
+        if (lastMessage && lastMessage.text === "Thinking...") {
+          const newMessages = prev.slice(0, -1);
+          return [...newMessages, {
+            text: "I apologize, but I encountered an error. Please try again.",
+            isUser: false,
+            timestamp: new Date(),
+          }];
+        }
+        return prev;
+      });
     } finally {
       setIsLoading(false);
+      setLoadingMessageId(null);
       setInputMessage('');
     }
   };
@@ -350,93 +394,189 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
             <span className="text-white text-sm">AI</span>
           </div>
           <div className="flex-grow">
-            <ReactMarkdown 
-              remarkPlugins={[remarkGfm]}
-              components={{
-                table: ({...props}) => (
-                  <div className="overflow-x-auto my-4 rounded-lg border border-gray-700">
-                    <table className={markdownStyles.table} {...props} />
-                  </div>
-                ),
-                th: ({...props}) => (
-                  <th 
-                    className={markdownStyles.tableHeader}
-                    style={{
-                      background: colors.background.input,
-                      color: colors.text.secondary
-                    }}
-                    {...props} 
-                  />
-                ),
-                td: ({...props}) => (
-                  <td 
-                    className={markdownStyles.tableCell}
-                    style={{color: colors.text.primary}}
-                    {...props} 
-                  />
-                ),
-                code: ({className, children, ...props}) => {
-                  const match = /language-(\w+)/.exec(className || '');
-                  return match ? (
-                    <pre 
-                      className="p-4 rounded-lg overflow-x-auto"
+            {message.text === "Thinking..." ? (
+              <div style={{ color: colors.text.primary }}>
+                <LoadingDots 
+                  text={selectedFile ? "Analyzing" : "Thinking"}
+                  color={colors.text.primary} 
+                />
+              </div>
+            ) : index === messages.length - 1 && !message.isUser ? (
+              <TypewriterText
+                text={message.text}
+                speed={selectedFile ? 1 : 0.5}
+                components={{
+                  table: ({...props}) => (
+                    <div className="overflow-x-auto my-4 rounded-lg border border-gray-700">
+                      <table className={markdownStyles.table} {...props} />
+                    </div>
+                  ),
+                  th: ({...props}) => (
+                    <th 
+                      className={markdownStyles.tableHeader}
                       style={{
                         background: colors.background.input,
-                        border: `1px solid ${colors.border.light}`
+                        color: colors.text.secondary
                       }}
-                    >
-                      <code className={className} style={{color: colors.text.primary}} {...props}>
+                      {...props} 
+                    />
+                  ),
+                  td: ({...props}) => (
+                    <td 
+                      className={markdownStyles.tableCell}
+                      style={{color: colors.text.primary}}
+                      {...props} 
+                    />
+                  ),
+                  code: ({className, children, ...props}: React.ComponentPropsWithoutRef<'code'>) => {
+                    const match = /language-(\w+)/.exec(className || '');
+                    return match ? (
+                      <pre 
+                        className="p-4 rounded-lg overflow-x-auto"
+                        style={{
+                          background: colors.background.input,
+                          border: `1px solid ${colors.border.light}`
+                        }}
+                      >
+                        <code className={className} style={{color: colors.text.primary}} {...props}>
+                          {children}
+                        </code>
+                      </pre>
+                    ) : (
+                      <code 
+                        className="px-1.5 py-0.5 rounded-md text-sm"
+                        style={{
+                          background: colors.background.input,
+                          color: colors.primary.from
+                        }}
+                        {...props}
+                      >
                         {children}
                       </code>
-                    </pre>
-                  ) : (
-                    <code 
-                      className="px-1.5 py-0.5 rounded-md text-sm"
+                    );
+                  },
+                  blockquote: ({...props}) => (
+                    <blockquote
+                      className="border-l-4 pl-4 italic my-4"
                       style={{
-                        background: colors.background.input,
-                        color: colors.primary.from
+                        borderColor: colors.border.light,
+                        color: colors.text.secondary
                       }}
                       {...props}
-                    >
-                      {children}
-                    </code>
-                  );
-                },
-                blockquote: ({...props}) => (
-                  <blockquote
-                    className="border-l-4 pl-4 italic my-4"
-                    style={{
-                      borderColor: colors.border.light,
-                      color: colors.text.secondary
-                    }}
-                    {...props}
-                  />
-                ),
-                h1: ({...props}) => (
-                  <h1 className="text-2xl font-bold my-4" style={{color: colors.text.primary}} {...props} />
-                ),
-                h2: ({...props}) => (
-                  <h2 className="text-xl font-bold my-3" style={{color: colors.text.primary}} {...props} />
-                ),
-                h3: ({...props}) => (
-                  <h3 className="text-lg font-bold my-2" style={{color: colors.text.primary}} {...props} />
-                ),
-                p: ({...props}) => (
-                  <p className="my-2 leading-relaxed" style={{color: colors.text.primary}} {...props} />
-                ),
-                ul: ({...props}) => (
-                  <ul className="list-disc list-inside my-2 space-y-1" {...props} />
-                ),
-                ol: ({...props}) => (
-                  <ol className="list-decimal list-inside my-2 space-y-1" {...props} />
-                ),
-                li: ({...props}) => (
-                  <li className="ml-4" style={{color: colors.text.primary}} {...props} />
-                )
-              } as Components}
-            >
-              {message.text}
-            </ReactMarkdown>
+                    />
+                  ),
+                  h1: ({...props}) => (
+                    <h1 className="text-2xl font-bold my-4" style={{color: colors.text.primary}} {...props} />
+                  ),
+                  h2: ({...props}) => (
+                    <h2 className="text-xl font-bold my-3" style={{color: colors.text.primary}} {...props} />
+                  ),
+                  h3: ({...props}) => (
+                    <h3 className="text-lg font-bold my-2" style={{color: colors.text.primary}} {...props} />
+                  ),
+                  p: ({...props}) => (
+                    <p className="my-2 leading-relaxed" style={{color: colors.text.primary}} {...props} />
+                  ),
+                  ul: ({...props}) => (
+                    <ul className="list-disc list-inside my-2 space-y-1" {...props} />
+                  ),
+                  ol: ({...props}) => (
+                    <ol className="list-decimal list-inside my-2 space-y-1" {...props} />
+                  ),
+                  li: ({...props}) => (
+                    <li className="ml-4" style={{color: colors.text.primary}} {...props} />
+                  )
+                }}
+              />
+            ) : (
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  table: ({...props}) => (
+                    <div className="overflow-x-auto my-4 rounded-lg border border-gray-700">
+                      <table className={markdownStyles.table} {...props} />
+                    </div>
+                  ),
+                  th: ({...props}) => (
+                    <th 
+                      className={markdownStyles.tableHeader}
+                      style={{
+                        background: colors.background.input,
+                        color: colors.text.secondary
+                      }}
+                      {...props} 
+                    />
+                  ),
+                  td: ({...props}) => (
+                    <td 
+                      className={markdownStyles.tableCell}
+                      style={{color: colors.text.primary}}
+                      {...props} 
+                    />
+                  ),
+                  code: ({className, children, ...props}: React.ComponentPropsWithoutRef<'code'>) => {
+                    const match = /language-(\w+)/.exec(className || '');
+                    return match ? (
+                      <pre 
+                        className="p-4 rounded-lg overflow-x-auto"
+                        style={{
+                          background: colors.background.input,
+                          border: `1px solid ${colors.border.light}`
+                        }}
+                      >
+                        <code className={className} style={{color: colors.text.primary}} {...props}>
+                          {children}
+                        </code>
+                      </pre>
+                    ) : (
+                      <code 
+                        className="px-1.5 py-0.5 rounded-md text-sm"
+                        style={{
+                          background: colors.background.input,
+                          color: colors.primary.from
+                        }}
+                        {...props}
+                      >
+                        {children}
+                      </code>
+                    );
+                  },
+                  blockquote: ({...props}) => (
+                    <blockquote
+                      className="border-l-4 pl-4 italic my-4"
+                      style={{
+                        borderColor: colors.border.light,
+                        color: colors.text.secondary
+                      }}
+                      {...props}
+                    />
+                  ),
+                  h1: ({...props}) => (
+                    <h1 className="text-2xl font-bold my-4" style={{color: colors.text.primary}} {...props} />
+                  ),
+                  h2: ({...props}) => (
+                    <h2 className="text-xl font-bold my-3" style={{color: colors.text.primary}} {...props} />
+                  ),
+                  h3: ({...props}) => (
+                    <h3 className="text-lg font-bold my-2" style={{color: colors.text.primary}} {...props} />
+                  ),
+                  p: ({...props}) => (
+                    <p className="my-2 leading-relaxed" style={{color: colors.text.primary}} {...props} />
+                  ),
+                  ul: ({...props}) => (
+                    <ul className="list-disc list-inside my-2 space-y-1" {...props} />
+                  ),
+                  ol: ({...props}) => (
+                    <ol className="list-decimal list-inside my-2 space-y-1" {...props} />
+                  ),
+                  li: ({...props}) => (
+                    <li className="ml-4" style={{color: colors.text.primary}} {...props} />
+                  )
+                }}
+              >
+                {message.text}
+              </ReactMarkdown>
+            )}
             
             {/* Render plot if plotData exists */}
             {message.plotData && (
@@ -462,7 +602,7 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
               <button
                 key={qIndex}
                 onClick={() => handleSuggestedQuestion(question)}
-                className="text-sm px-3 py-1.5 rounded-lg transition-all duration-200 hover:scale-105"
+                className="text-sm px-3 py-1.5 rounded-lg transition-all duration-200 hover:scale-105 cursor-pointer"
                 style={{
                   background: colors.background.input,
                   border: `1px solid ${colors.border.light}`,
@@ -492,22 +632,27 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen" style={{ 
+      background: theme === 'dark' ? '#000000' : colors.background.primary 
+    }}>
       <Navbar />
       
       {/* Main Content Area */}
-      <main className={layoutStyles.main} style={{ borderColor: colors.border.light }}>
-        <div className="pt-20 px-6 pb-6 h-full flex flex-col">
+      <main className={layoutStyles.main} style={{ 
+        borderColor: colors.border.light,
+        background: theme === 'dark' ? '#000000' : colors.background.primary 
+      }}>
+        <div className="pt-24 px-6 pb-6 h-full flex flex-col">
           {/* Chat Container */}
           <div 
             ref={chatContainerRef}
-            className="flex-1 overflow-y-auto space-y-4 mb-4"
+            className="flex-1 overflow-y-auto space-y-6 mb-4"
           >
             {messages.map((message, index) => renderMessage(message, index))}
           </div>
 
           {/* Input Form */}
-          <form onSubmit={handleSendMessage} className="flex gap-4 mt-auto">
+          <form onSubmit={handleSendMessage} className="flex gap-4 mt-6">
             <input
               type="text"
               value={inputMessage}

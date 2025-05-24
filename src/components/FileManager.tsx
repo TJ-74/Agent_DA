@@ -18,7 +18,7 @@ const FileManager: React.FC<FileManagerProps> = ({
   onFileDelete,
   onFileSelect,
 }) => {
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
   const { selectedFile, setSelectedFile } = useFile();
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -118,7 +118,10 @@ const FileManager: React.FC<FileManagerProps> = ({
                   <button
                     onClick={() => handleDelete(file)}
                     className="p-2 rounded-lg transition-all duration-200 hover:scale-110"
-                    style={{ color: colors.text.secondary }}
+                    style={{ 
+                      color: theme === 'light' ? '#ef4444' : colors.text.secondary,
+                      opacity: isFileDeleting ? 0.5 : 1
+                    }}
                     aria-label="Delete file"
                     disabled={isFileDeleting}
                   >
@@ -135,7 +138,7 @@ const FileManager: React.FC<FileManagerProps> = ({
                       background: isSelected 
                         ? colors.background.card
                         : `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})`,
-                      color: colors.text.primary,
+                      color: isSelected ? colors.text.secondary : '#FFFFFF',
                     }}
                     disabled={isSelected || isFileDeleting}
                   >
