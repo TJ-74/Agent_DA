@@ -34,12 +34,27 @@ pip install -r requirements.txt
 
 ## Running the Server
 
+### Local Development
 Start the development server:
 ```bash
 uvicorn main:app --reload
 ```
 
 The server will start at `http://localhost:8000`
+
+### Production Deployment (Render)
+For production deployment on Render, the service will automatically:
+1. Use the `render.yaml` configuration in the root directory
+2. Install dependencies from requirements.txt
+3. Start the server using:
+```bash
+uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+
+Key differences in production:
+- No `--reload` flag (not needed in production)
+- `--host 0.0.0.0` to accept external connections
+- `$PORT` environment variable used instead of hardcoded port
 
 ## API Endpoints
 
