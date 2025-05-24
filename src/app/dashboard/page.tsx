@@ -18,6 +18,9 @@ import type { Components } from 'react-markdown';
 import type { Options } from 'react-markdown';
 import TypewriterText from '@/components/TypewriterText';
 import LoadingDots from '@/components/LoadingDots';
+import { useMobileMenu } from '@/context/MobileMenuContext';
+import MobileMenu from '@/components/MobileMenu';
+import { IoMenu } from 'react-icons/io5';
 
 interface SuggestedQuestion {
   text: string;
@@ -28,74 +31,6 @@ interface Message extends ChatMessageType {
   suggestedQuestions?: string[];
   plotData?: any;
 }
-
-// Add this CSS at the top of the file after imports
-const markdownStyles = {
-  message: `
-    prose 
-    prose-invert 
-    max-w-none 
-    prose-p:text-gray-200 
-    prose-headings:text-white 
-    prose-strong:text-white
-    prose-code:text-blue-300
-    prose-pre:bg-gray-800
-    prose-pre:border
-    prose-pre:border-gray-700
-    prose-pre:rounded-lg
-    prose-blockquote:border-l-4
-    prose-blockquote:border-gray-500
-    prose-blockquote:pl-4
-    prose-blockquote:italic
-    prose-li:text-gray-200
-  `,
-  table: `
-    min-w-full 
-    border-collapse 
-    my-4
-    rounded-lg
-    overflow-hidden
-  `,
-  tableHeader: `
-    px-4 
-    py-2 
-    text-left 
-    text-sm 
-    font-semibold 
-    border-b 
-    border-gray-700
-  `,
-  tableCell: `
-    px-4 
-    py-2 
-    text-sm 
-    border-b 
-    border-gray-700/50
-  `
-};
-
-// Add this CSS at the top after the markdownStyles
-const layoutStyles = {
-  sidebar: `
-    fixed 
-    right-0 
-    top-0 
-    h-screen 
-    w-[400px]
-    overflow-y-auto
-    border-l
-    z-20
-  `,
-  main: `
-    fixed 
-    left-0 
-    top-0 
-    h-screen 
-    right-[400px]
-    overflow-y-auto
-    z-10
-  `,
-};
 
 export default function DashboardPage() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -111,6 +46,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const { toggleMenu } = useMobileMenu();
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -368,27 +304,26 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
   const renderMessage = (message: Message, index: number) => (
     <div
       key={index}
-      className={`p-6 rounded-xl ${message.isUser ? 'ml-auto bg-opacity-50' : 'mr-auto'}`}
+      className={`p-4 lg:p-6 rounded-xl w-[95%] sm:w-[85%] ${message.isUser ? 'ml-auto bg-opacity-50' : 'mr-auto'}`}
       style={{
         background: message.isUser ? colors.background.input : colors.background.card,
-        maxWidth: '85%',
         border: `1px solid ${colors.border.light}`,
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
       }}
     >
       {message.isUser ? (
-        <div className="flex items-start gap-3">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
-            <span className="text-white text-sm">You</span>
+        <div className="flex items-start gap-2 lg:gap-3">
+          <div className="flex-shrink-0 w-6 h-6 lg:w-8 lg:h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
+            <span className="text-white text-xs lg:text-sm">You</span>
           </div>
-          <p style={{ color: colors.text.primary }} className="text-base leading-relaxed">
+          <p style={{ color: colors.text.primary }} className="text-sm lg:text-base leading-relaxed">
             {message.text}
           </p>
         </div>
       ) : (
-        <div className="flex items-start gap-3">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-r from-green-500 to-teal-500 flex items-center justify-center">
-            <span className="text-white text-sm">AI</span>
+        <div className="flex items-start gap-2 lg:gap-3">
+          <div className="flex-shrink-0 w-6 h-6 lg:w-8 lg:h-8 rounded-full bg-gradient-to-r from-green-500 to-teal-500 flex items-center justify-center">
+            <span className="text-white text-xs lg:text-sm">AI</span>
           </div>
           <div className="flex-grow">
             {message.text === "Thinking..." ? (
@@ -405,12 +340,12 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
                 components={{
                   table: ({...props}) => (
                     <div className="overflow-x-auto my-4 rounded-lg border border-gray-700">
-                      <table className={markdownStyles.table} {...props} />
+                      <table className="min-w-full border-collapse my-4 rounded-lg overflow-hidden" {...props} />
                     </div>
                   ),
                   th: ({...props}) => (
                     <th 
-                      className={markdownStyles.tableHeader}
+                      className="px-4 py-2 text-left text-sm font-semibold border-b border-gray-700"
                       style={{
                         background: colors.background.input,
                         color: colors.text.secondary
@@ -420,7 +355,7 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
                   ),
                   td: ({...props}) => (
                     <td 
-                      className={markdownStyles.tableCell}
+                      className="px-4 py-2 text-sm border-b border-gray-700/50"
                       style={{color: colors.text.primary}}
                       {...props} 
                     />
@@ -491,12 +426,12 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
                 components={{
                   table: ({...props}) => (
                     <div className="overflow-x-auto my-4 rounded-lg border border-gray-700">
-                      <table className={markdownStyles.table} {...props} />
+                      <table className="min-w-full border-collapse my-4 rounded-lg overflow-hidden" {...props} />
                     </div>
                   ),
                   th: ({...props}) => (
                     <th 
-                      className={markdownStyles.tableHeader}
+                      className="px-4 py-2 text-left text-sm font-semibold border-b border-gray-700"
                       style={{
                         background: colors.background.input,
                         color: colors.text.secondary
@@ -506,7 +441,7 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
                   ),
                   td: ({...props}) => (
                     <td 
-                      className={markdownStyles.tableCell}
+                      className="px-4 py-2 text-sm border-b border-gray-700/50"
                       style={{color: colors.text.primary}}
                       {...props} 
                     />
@@ -590,16 +525,16 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
       )}
       
       {!message.isUser && message.suggestedQuestions && message.suggestedQuestions.length > 0 && (
-        <div className="mt-4 pt-4 border-t" style={{ borderColor: colors.border.light }}>
-          <p className="text-sm mb-2" style={{ color: colors.text.secondary }}>
+        <div className="mt-3 lg:mt-4 pt-3 lg:pt-4 border-t" style={{ borderColor: colors.border.light }}>
+          <p className="text-xs lg:text-sm mb-2" style={{ color: colors.text.secondary }}>
             Suggested Questions:
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5 lg:gap-2">
             {message.suggestedQuestions.map((question, qIndex) => (
               <button
                 key={qIndex}
                 onClick={() => handleSuggestedQuestion(question)}
-                className="text-sm px-3 py-1.5 rounded-lg transition-all duration-200 hover:scale-105 cursor-pointer"
+                className="text-xs lg:text-sm px-2 lg:px-3 py-1 lg:py-1.5 rounded-lg transition-all duration-200 hover:scale-105 cursor-pointer"
                 style={{
                   background: colors.background.input,
                   border: `1px solid ${colors.border.light}`,
@@ -613,7 +548,7 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
         </div>
       )}
       
-      <div className="text-xs mt-3 flex items-center gap-2" style={{ color: colors.text.muted }}>
+      <div className="text-[10px] lg:text-xs mt-2 lg:mt-3 flex items-center gap-2" style={{ color: colors.text.muted }}>
         <span>{message.isUser ? 'Sent' : 'Received'} at</span>
         {formatTimestamp(message.timestamp)}
       </div>
@@ -635,60 +570,69 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
   }
 
   return (
-    <div className="flex h-screen" style={{ 
+    <div className="flex flex-col lg:flex-row min-h-screen" style={{ 
       background: theme === 'dark' ? '#000000' : colors.background.primary 
     }}>
       <Navbar />
       
+      {/* Mobile Menu */}
+      <MobileMenu
+        onFileUpload={handleFileUpload}
+        onDatabaseConnect={handleDatabaseConnect}
+        onApiImport={handleApiImport}
+      />
+      
       {/* Main Content Area */}
-      <main className={layoutStyles.main} style={{ 
+      <main className="relative lg:fixed lg:left-0 lg:top-0 h-[calc(100vh-64px)] lg:h-screen w-full lg:w-[calc(100%-400px)] overflow-y-auto z-10 order-2 lg:order-1" style={{ 
         borderColor: colors.border.light,
         background: theme === 'dark' ? '#000000' : colors.background.primary 
       }}>
-        <div className="pt-24 px-6 pb-6 h-full flex flex-col">
+        <div className="pt-16 lg:pt-20 px-4 lg:px-6 pb-6 h-full flex flex-col">
           {/* Chat Container */}
           <div 
             ref={chatContainerRef}
-            className="flex-1 overflow-y-auto space-y-6 mb-4"
+            className="flex-1 overflow-y-auto space-y-4 lg:space-y-6 mb-4 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent"
           >
             {messages.map((message, index) => renderMessage(message, index))}
           </div>
 
           {/* Input Form */}
-          <form onSubmit={handleSendMessage} className="flex gap-4 mt-6">
-            <input
-              type="text"
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              placeholder={selectedFile 
-                ? `Ask me about ${selectedFile.filename}...` 
-                : "Select a file or ask me to analyze your data..."}
-              className="flex-1 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 transition-all duration-200 placeholder-gray-400"
-              style={{
-                background: colors.background.input,
-                color: colors.text.primary,
-                border: `1px solid ${colors.border.light}`,
-              }}
-              disabled={isLoading}
-            />
-            <button
-              type="submit"
-              className="px-6 py-3 rounded-xl transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                background: `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})`,
-                color: colors.text.primary,
-              }}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Sending...' : 'Send'}
-            </button>
-          </form>
+          <div className="sticky bottom-0 left-0 right-0 bg-opacity-80 backdrop-blur-lg pt-4">
+            <form onSubmit={handleSendMessage} className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+              <input
+                type="text"
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                placeholder={selectedFile 
+                  ? `Ask me about ${selectedFile.filename}...` 
+                  : "Select a file or ask me to analyze your data..."}
+                className="flex-1 rounded-xl px-3 sm:px-4 py-2 sm:py-3 focus:outline-none focus:ring-2 transition-all duration-200 placeholder-gray-400 text-sm sm:text-base"
+                style={{
+                  background: colors.background.input,
+                  color: colors.text.primary,
+                  border: `1px solid ${colors.border.light}`,
+                }}
+                disabled={isLoading}
+              />
+              <button
+                type="submit"
+                className="px-4 sm:px-6 py-2 sm:py-3 rounded-xl transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                style={{
+                  background: `linear-gradient(to right, ${colors.primary.from}, ${colors.primary.to})`,
+                  color: colors.text.primary,
+                }}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Sending...' : 'Send'}
+              </button>
+            </form>
+          </div>
         </div>
       </main>
 
-      {/* Right Sidebar - Upload Area */}
-      <aside className={layoutStyles.sidebar} style={{ borderColor: colors.border.light }}>
-        <div className="pt-20 px-6 pb-6 h-full">
+      {/* Right Sidebar - Upload Area (Only visible on desktop) */}
+      <aside className="hidden lg:block fixed right-0 top-0 h-screen w-[400px] overflow-y-auto border-l z-20 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent" style={{ borderColor: colors.border.light }}>
+        <div className="pt-16 lg:pt-20 px-4 lg:px-6 pb-6 h-full">
           <DataUpload
             onFileUpload={handleFileUpload}
             onDatabaseConnect={handleDatabaseConnect}
@@ -700,16 +644,16 @@ ${Object.entries(analysis.categorical_columns).map(([col, stats]) =>
       {/* Visualizations Section */}
       {visualizations.length > 0 && (
         <div 
-          className="fixed bottom-0 left-0 right-[400px] p-6 z-20"
+          className="fixed bottom-0 left-0 w-full lg:w-[calc(100%-400px)] p-4 lg:p-6 z-20"
           style={{ 
             background: colors.background.card,
             borderTop: `1px solid ${colors.border.light}` 
           }}
         >
-          <h2 className="text-xl font-semibold mb-4" style={{ color: colors.text.primary }}>
+          <h2 className="text-lg lg:text-xl font-semibold mb-3 lg:mb-4" style={{ color: colors.text.primary }}>
             Analysis Results
           </h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4 max-h-[50vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent">
             {visualizations.map((viz, index) => (
               <Visualization
                 key={index}

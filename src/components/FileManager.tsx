@@ -53,17 +53,17 @@ const FileManager: React.FC<FileManagerProps> = ({
 
   return (
     <div 
-      className="rounded-2xl shadow-2xl p-6 backdrop-blur-xl"
+      className="rounded-xl lg:rounded-2xl shadow-lg lg:shadow-2xl p-4 lg:p-6 backdrop-blur-xl"
       style={{ background: colors.background.card, border: `1px solid ${colors.border.light}` }}
     >
-      <h2 className="text-xl font-semibold mb-4" style={{ color: colors.text.primary }}>
+      <h2 className="text-lg lg:text-xl font-semibold mb-3 lg:mb-4" style={{ color: colors.text.primary }}>
         Your Files
       </h2>
       
       {/* Error Message */}
       {error && (
         <div 
-          className="mb-4 p-3 rounded-lg"
+          className="mb-3 lg:mb-4 p-2 lg:p-3 rounded-lg text-sm"
           style={{ 
             background: 'rgba(255, 0, 0, 0.1)', 
             border: '1px solid rgba(255, 0, 0, 0.2)',
@@ -74,14 +74,14 @@ const FileManager: React.FC<FileManagerProps> = ({
         </div>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-3 lg:space-y-4 max-h-[300px] lg:max-h-none overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent">
         {savedFiles.map((file) => {
           const isSelected = selectedFile?.id === file.id;
           const isFileDeleting = isDeleting === file.id;
           return (
             <div
               key={file.id}
-              className={`p-4 rounded-xl transition-all duration-200 ${
+              className={`p-3 lg:p-4 rounded-lg lg:rounded-xl transition-all duration-200 ${
                 isSelected ? 'ring-2 transform scale-[1.02]' : 'hover:scale-[1.01]'
               }`}
               style={{ 
@@ -90,17 +90,17 @@ const FileManager: React.FC<FileManagerProps> = ({
                 opacity: isFileDeleting ? 0.5 : 1,
               }}
             >
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2 lg:gap-3">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <h3 
-                      className="font-medium mb-1 cursor-pointer hover:underline"
+                      className="font-medium mb-1 cursor-pointer hover:underline text-sm lg:text-base"
                       style={{ color: colors.text.primary }}
                       onClick={() => handleSelect(file)}
                     >
                       {file.filename}
                     </h3>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="grid grid-cols-2 gap-1.5 lg:gap-2 text-xs lg:text-sm">
                       <div style={{ color: colors.text.secondary }}>
                         Size: {formatFileSize(file.size)}
                       </div>
@@ -117,7 +117,7 @@ const FileManager: React.FC<FileManagerProps> = ({
                   </div>
                   <button
                     onClick={() => handleDelete(file)}
-                    className="p-2 rounded-lg transition-all duration-200 hover:scale-110"
+                    className="p-1.5 lg:p-2 rounded-lg transition-all duration-200 hover:scale-110"
                     style={{ 
                       color: theme === 'light' ? '#ef4444' : colors.text.secondary,
                       opacity: isFileDeleting ? 0.5 : 1
@@ -131,7 +131,7 @@ const FileManager: React.FC<FileManagerProps> = ({
                 <div className="flex justify-end">
                   <button
                     onClick={() => handleSelect(file)}
-                    className={`px-4 py-2 rounded-lg transition-all duration-200 text-sm ${
+                    className={`px-3 lg:px-4 py-1.5 lg:py-2 rounded-lg transition-all duration-200 text-xs lg:text-sm ${
                       isSelected ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
                     }`}
                     style={{

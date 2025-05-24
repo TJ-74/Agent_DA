@@ -3,10 +3,13 @@
 import React from 'react';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useMobileMenu } from '@/context/MobileMenuContext';
+import { IoMenu } from 'react-icons/io5';
 
 const Navbar: React.FC = () => {
   const { colors, theme, setTheme } = useTheme();
   const { logout } = useAuth();
+  const { toggleMenu } = useMobileMenu();
 
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');
@@ -36,7 +39,23 @@ const Navbar: React.FC = () => {
           </div>
 
           {/* Right side buttons */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 lg:gap-6">
+            {/* Mobile Menu Toggle (visible only on mobile) */}
+            <button
+              onClick={toggleMenu}
+              className="p-2.5 rounded-xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent cursor-pointer lg:hidden"
+              style={{
+                background: theme === 'light' 
+                  ? 'rgba(0, 0, 0, 0.05)'
+                  : 'rgba(255, 255, 255, 0.1)',
+                color: colors.text.primary,
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
+              }}
+              aria-label="Toggle mobile menu"
+            >
+              <IoMenu size={20} />
+            </button>
+
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
@@ -87,7 +106,7 @@ const Navbar: React.FC = () => {
                   d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" 
                 />
               </svg>
-              Logout
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>
